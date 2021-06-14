@@ -1,3 +1,4 @@
+import { extname } from "lume/deps/path.js";
 import { merge } from "lume/utils.js";
 import { Page } from "lume/filesystem.js";
 import { HTMLParser, Processor, StyleSheet } from "./deps.ts";
@@ -5,6 +6,7 @@ import { HTMLParser, Processor, StyleSheet } from "./deps.ts";
 const defaults = {
   preflight: false,
   minify: false,
+  dest: "/windi.css",
 };
 
 export default function (userOptions) {
@@ -28,11 +30,11 @@ export default function (userOptions) {
         .combine();
 
       const css = new Page();
+      const ext = extname(options.dest);
+      const path = options.dest.slice(0, -ext.length);
+
       css.content = outputStyle.build(options.minify);
-      css.dest = {
-        path: "/windi",
-        ext: ".css",
-      };
+      css.dest = { path, ext };
       site.pages.push(css);
     });
   };
