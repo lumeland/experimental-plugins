@@ -1,3 +1,3 @@
-export { default as Processor } from "https://esm.sh/windicss";
-export { HTMLParser } from "https://esm.sh/windicss/utils/parser";
-export { StyleSheet } from "https://esm.sh/windicss/utils/style";
+export { default as Processor } from "https://esm.sh/windicss@3.1.2";
+export { HTMLParser } from "https://esm.sh/windicss@3.1.2/utils/parser";
+export { StyleSheet } from "https://esm.sh/windicss@3.1.2/utils/style";
