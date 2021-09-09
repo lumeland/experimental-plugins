@@ -1,5 +1,5 @@
-import lume from "lume/mod.js";
-import windicss from "../windicss.js";
+import lume from "lume/mod.ts";
+import windicss from "../windicss.ts";
 
 const site = lume({
   prettyUrls: false,
