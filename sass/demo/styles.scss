@@ -1,0 +1,11 @@
+$color: red;
+$color2: #fff;
+
+html {
+  color: $color;
+
+  h1 {
+    background-color: $color;
+    color: white;
+  }
+}
