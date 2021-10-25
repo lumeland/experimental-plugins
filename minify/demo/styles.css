@@ -1,0 +1,10 @@
+body {
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+}
+.button {
+  background-color: #4CAF50; /* Green */
+  border: none;
+}
