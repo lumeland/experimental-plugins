@@ -20,3 +20,7 @@ Minify HTML, CSS, JS and JSON files using
 
 - To minify JS, it's recommended to use the plugin Terser, already provided by
   Lume.
+
+## esbuild
+
+To bundle/minify js files using [esbuild](https://esbuild.github.io/).
