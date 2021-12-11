@@ -55,7 +55,7 @@ export default class ComponentsLoader {
         }
       }
     }
-    console.log({ components });
+
     return components;
   }
 
