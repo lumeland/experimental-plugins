@@ -1,55 +1,44 @@
 import { extname } from "lume/deps/path.ts";
-import { merge } from "lume/core/utils.ts";
 import { SitePage } from "lume/core/filesystem.ts";
 import { Page, Site } from "lume/core.ts";
-import { HTMLParser, Processor, StyleSheet } from "./deps.ts";
+import { defineConfig, HTMLParser, Processor, StyleSheet } from "./deps.ts";
 
-export interface Options {
-  /** Set `true` to include the style reset */
-  preflight: boolean;
-
-  /** Set `true` to minify the output code */
-  minify: boolean;
-
-  /** The output filename with the generated code */
-  dest: string;
-}
-
-const defaults: Options = {
-  preflight: false,
-  minify: false,
-  dest: "/windi.css",
-};
-
-/** A plugin to use windi.css in your website */
-export default function (userOptions?: Partial<Options>) {
-  const options = merge(defaults, userOptions);
-
+/**
+ * a lume plugin for windicss, the next generation utility-first css framework
+ *
+ * classnames from all built pages will be read/extracted
+ * and only the necessary css will be generated
+ *
+ * the output css file must be manually included in your document's
+ * head e.g. <link rel="stylesheet" href="/windi.css">
+ */
+export default function (
+  { minify = false, output = "/windi.css", config = defineConfig({}) } = {},
+) {
   return (site: Site) => {
-    // Get windi processor
+    // create & configure a windicss instance
     const processor = new Processor();
+    processor.loadConfig(config);
 
     site.addEventListener("afterRender", () => {
-      // Extract the styles from all html pages
-      const styles = site.pages
+      // create & merge stylesheets for all pages
+      const stylesheet = site.pages
         .filter((page) => page.dest.ext === ".html")
-        .map((page) => generateStyles(page, processor, options));
-
-      // Generate the final css code
-      const outputStyle = styles
+        .map((page) =>
+          generateStyles(page, processor, config.preflight as boolean)
+        )
         .reduce(
-          (previous, current) => previous.extend(current),
+          (previous, current) => previous.extend(current, false),
           new StyleSheet(),
         )
         .sort()
         .combine();
 
-      // Create a new page with this code
-      const ext = extname(options.dest);
-      const path = options.dest.slice(0, -ext.length);
-      const page = new SitePage({ path, ext });
-
-      page.content = outputStyle.build(options.minify);
+      // output css as a page
+      const ext = extname(output),
+        path = output.slice(0, -ext.length),
+        page = new SitePage({ path, ext });
+      page.content = stylesheet.build(minify);
       site.pages.push(page);
     });
   };
@@ -58,20 +47,16 @@ export default function (userOptions?: Partial<Options>) {
 export function generateStyles(
   page: Page,
   processor: Processor,
-  options: Options,
+  preflight: boolean,
 ) {
-  const content = page.content as string;
-  const classes = new HTMLParser(content)
-    .parseClasses()
-    .map((i) => i.result)
-    .join("");
+  const content = page.content as string,
+    classes = new HTMLParser(content)
+      .parseClasses()
+      .map((i) => i.result)
+      .join(" "),
+    interpretedSheet = processor.interpret(classes).styleSheet;
+  if (!preflight) return interpretedSheet;
 
-  const styles = processor.interpret(classes).styleSheet;
-
-  if (options.preflight) {
-    const preflightSheet = processor.preflight(content);
-    return styles.extend(preflightSheet);
-  }
-
-  return styles;
+  const preflightSheet = processor.preflight(content);
+  return interpretedSheet.extend(preflightSheet, false);
 }
