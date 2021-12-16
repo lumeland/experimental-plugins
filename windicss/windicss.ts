@@ -2,7 +2,14 @@ import { extname } from "lume/deps/path.ts";
 import { merge } from "lume/core/utils.ts";
 import { SitePage } from "lume/core/filesystem.ts";
 import { Page, Site } from "lume/core.ts";
-import { CSSParser, HTMLParser, Processor, StyleSheet } from "./deps.ts";
+import {
+  CSSParser,
+  Element,
+  HTMLDocument,
+  HTMLParser,
+  Processor,
+  StyleSheet,
+} from "./deps.ts";
 
 export interface Options {
   minify: boolean;
@@ -22,11 +29,11 @@ export interface Options {
   config: Record<string, unknown>;
 }
 
-const defaults = {
+const defaults: Options = {
   minify: false,
-  mode: "interpret" as "interpret" | "compile",
+  mode: "interpret",
   output: {
-    mode: "file" as "file" | "styleTag",
+    mode: "file",
     filename: "windi.css",
   },
   config: {},
@@ -83,8 +90,8 @@ export default function (userOptions: Partial<Options> = {}) {
 }
 
 export function windi(page: Page, processor: Processor, options: Options) {
-  let content = page.content as string;
-  const parser = new HTMLParser(content);
+  const content = page.content as string,
+    parser = new HTMLParser(content);
 
   // update page content with classnames output from windi
   // e.g. to expand variant:(class groups) and to support compile mode
@@ -105,7 +112,7 @@ export function windi(page: Page, processor: Processor, options: Options) {
       stylesheet = stylesheet.extend(compiled.styleSheet);
     }
   }
-  content = html + content.substring(index);
+  page.content = html + content.substring(index);
 
   // attributify: https://windicss.org/features/attributify.html
   // reduceRight taken from https://github.com/windicss/windicss/blob/main/src/cli/index.ts
@@ -134,16 +141,13 @@ export function windi(page: Page, processor: Processor, options: Options) {
   // https://windicss.org/features/directives.html
   // https://windicss.org/posts/language.html
   // https://windicss.org/integrations/cli.html#style-block
-  content = content.replace(
-    /<style lang=['"]windi["']>([\s\S]*)<\/style>/,
-    (_match, css) => {
-      return `<style>${
-        new CSSParser(css, processor).parse().build(options.minify)
-      }</style>`;
-    },
-  );
-
-  page.content = content;
+  (page.document as HTMLDocument).querySelectorAll('style[lang="windi"]')
+    .forEach((node) => {
+      const $style = node as Element,
+        translatedSheet = new CSSParser($style.innerText, processor).parse();
+      $style.removeAttribute("lang");
+      $style.innerText = translatedSheet.build(options.minify);
+    });
 
   if (!options.config.preflight) return stylesheet;
   const preflightSheet = processor.preflight(content);
