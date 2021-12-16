@@ -27,6 +27,10 @@ export interface Options {
   // https://github.com/windicss/windicss/blob/main/src/interfaces.ts#L367
   // https://windicss.org/guide/configuration.html
   config: Record<string, unknown>;
+  // transpile .windi.css files to .css files
+  // https://windicss.org/posts/language.html
+  // note: for this to work the plugin must called BEFORE postcss
+  windiLangFiles: boolean;
 }
 
 const defaults: Options = {
@@ -34,9 +38,10 @@ const defaults: Options = {
   mode: "interpret",
   output: {
     mode: "file",
-    filename: "windi.css",
+    filename: "/windi.css",
   },
   config: {},
+  windiLangFiles: true,
 };
 
 /**
@@ -56,6 +61,15 @@ export default function (userOptions: Partial<Options> = {}) {
     // (config assignment merges provided with defaults)
     const processor = new Processor();
     options.config = processor.loadConfig(options.config);
+
+    if (options.windiLangFiles) {
+      site.loadAssets([".windi.css"]);
+      site.process([".windi.css"], (page) => {
+        const stylesheet = new CSSParser(page.content as string, processor);
+        page.content = stylesheet.parse().build(options.minify);
+        page.dest.ext = ".css";
+      });
+    }
 
     site.addEventListener("afterRender", () => {
       const pages = site.pages
