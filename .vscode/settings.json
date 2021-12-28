@@ -4,6 +4,7 @@
   "deno.unstable": true,
   "deno.importMap": ".vscode/lume_import_map.json",
   "deno.suggest.imports.hosts": {
-    "https://esm.sh": false
+    "https://esm.sh": false,
+    "https://deno.land": true
   }
 }
