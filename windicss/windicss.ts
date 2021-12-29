@@ -1,15 +1,10 @@
 import { extname, resolve } from "lume/deps/path.ts";
 import { merge } from "lume/core/utils.ts";
 import { Page } from "lume/core/filesystem.ts";
-import { Site } from "lume/core.ts";
-import {
-  CSSParser,
-  Element,
-  HTMLDocument,
-  HTMLParser,
-  Processor,
-  StyleSheet,
-} from "./deps.ts";
+import { CSSParser, HTMLParser, Processor, StyleSheet } from "./deps.ts";
+
+import type { Element, HTMLDocument } from "lume/deps/dom.ts";
+import type { Site } from "lume/core.ts";
 
 export interface Options {
   minify: boolean;

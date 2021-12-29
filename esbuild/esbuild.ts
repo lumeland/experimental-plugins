@@ -1,7 +1,8 @@
-import { Site } from "lume/core.ts";
 import { merge } from "lume/core/utils.ts";
 import { relative } from "lume/deps/path.ts";
 import * as esbuild from "./deps.ts";
+
+import type { Site } from "lume/core.ts";
 
 export interface Options {
   /** The list of extensions this plugin applies to */
