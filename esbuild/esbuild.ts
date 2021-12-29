@@ -1,5 +1,5 @@
 import { Site } from "lume/core.ts";
-import { merge, warn } from "lume/core/utils.ts";
+import { merge } from "lume/core/utils.ts";
 import { relative } from "lume/deps/path.ts";
 import * as esbuild from "./deps.ts";
 
@@ -53,11 +53,11 @@ export default function (userOptions?: Partial<Options>) {
       );
 
       if (errors.length) {
-        warn("esbuild errors", { errors });
+        site.logger.warn("esbuild errors", { errors });
       }
 
       if (warnings.length) {
-        warn("esbuild warnings", { warnings });
+        site.logger.warn("esbuild warnings", { warnings });
       }
 
       if (outputFiles?.length) {

@@ -1,4 +1,5 @@
-import { Exception, merge } from "lume/core/utils.ts";
+import { Exception } from "lume/core/errors.ts";
+import { merge } from "lume/core/utils.ts";
 import { Page, Site } from "lume/core.ts";
 import { minify as rawMinify, minifyHTML, MinifyHTMLOptions } from "./deps.ts";
 
