@@ -27,4 +27,5 @@ To bundle/minify js files using [esbuild](https://esbuild.github.io/).
 
 ## Imagick
 
-To transform image files using [ImageMagick](https://github.com/lumeland/imagemagick-deno).
+To transform image files using
+[ImageMagick](https://github.com/lumeland/imagemagick-deno).
