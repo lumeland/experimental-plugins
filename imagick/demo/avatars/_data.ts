@@ -2,11 +2,17 @@ import type { IMagickImage } from "../../deps.ts";
 import type { Page } from "lume/core.ts";
 
 export function imagick(page: Page) {
-  const url = page.data.url as string;
+  const { path, ext } = page.dest;
 
   return {
-    [url](image: IMagickImage) {
-      image.resize(100, 100);
+    [path + ext](image: IMagickImage) {
+      image.resize(128, 128);
+    },
+    [path + "-small" + ext](image: IMagickImage) {
+      image.resize(64, 64);
+    },
+    [path + "-big" + ext](image: IMagickImage) {
+      image.resize(256, 256);
     },
   };
 }

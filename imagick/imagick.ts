@@ -57,7 +57,7 @@ export default function (userOptions?: Partial<Options>) {
               return;
             }
 
-            const newPage = page.duplicate({ url: newUrl });
+            const newPage = page.duplicate({ url: newUrl, imagick: undefined });
             const ext = extname(newUrl);
             newPage.content = new Uint8Array(content);
             newPage.dest.ext = ext;
