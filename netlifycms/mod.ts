@@ -10,6 +10,7 @@ export interface Options {
   path: string;
   options: Record<string, unknown>;
   netlifyIdentity: boolean;
+  extraHTML: string;
 }
 
 const defaults: Options = {
@@ -17,6 +18,7 @@ const defaults: Options = {
   path: "/admin/",
   options: {},
   netlifyIdentity: false,
+  extraHTML: "",
 };
 
 /** A plugin to use SASS in Lume */
@@ -25,7 +27,9 @@ export default function (userOptions?: Partial<Options>) {
 
   return (site: Site) => {
     if (options.local) {
-      site.addEventListener("afterBuild", "npx netlify-cms-proxy-server");
+      site.addEventListener("afterBuild", () => {
+        site.run("npx netlify-cms-proxy-server");
+      });
     }
 
     site.addEventListener("beforeSave", () => {
@@ -54,13 +58,14 @@ export default function (userOptions?: Partial<Options>) {
         <title>Admin</title>
       </head>
       <body>
-        <link href="${configUrl}" type="text/yaml" rel="cms-config-url">
-        <script src="https://unpkg.com/netlify-cms@^2.0.0/dist/netlify-cms.js"></script>
-        ${
+      <link href="${configUrl}" type="text/yaml" rel="cms-config-url">
+      <script src="https://unpkg.com/netlify-cms@^2.0.0/dist/netlify-cms.js"></script>
+      ${
         options.netlifyIdentity
           ? `<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>`
           : ""
       }
+      ${options.extraHTML || ""}
       </body>
       </html>
       `;
