@@ -21,11 +21,11 @@ Minify HTML, CSS, JS and JSON files using
 - To minify JS, it's recommended to use the plugin Terser, already provided by
   Lume.
 
-## esbuild
-
-To bundle/minify js files using [esbuild](https://esbuild.github.io/).
-
 ## Imagick
 
 To transform image files using
 [ImageMagick](https://github.com/lumeland/imagemagick-deno).
+
+## NetlifyCMS
+
+To use [NetlifyCMS](https://www.netlifycms.org/).
