@@ -1,11 +1,10 @@
-$color: red;
-$color2: #fff;
+@import "_sass/colors.scss";
 
 html {
   color: $color;
 
   h1 {
     background-color: $color;
-    color: white;
+    color: $color2;
   }
 }

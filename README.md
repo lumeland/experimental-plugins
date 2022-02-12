@@ -10,8 +10,7 @@ Use [Windi CSS](https://windicss.org/) in your website.
 
 Add (very limited) support for [SASS](https://sass-lang.com/).
 
-- It uses [deno_sass2](https://github.com/littledivy/deno_sass2) library, but it
-  has not support for `@import`
+- It uses [denosass](https://github.com/hironichu/denosass) library.
 
 ## Minify
 
@@ -20,6 +19,8 @@ Minify HTML, CSS, JS and JSON files using
 
 - To minify JS, it's recommended to use the plugin Terser, already provided by
   Lume.
+- To minify CSS, it's recommended to use the plugin ParcelCSS, already provided
+  by Lume.
 
 ## Imagick
 

@@ -26,25 +26,25 @@ export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    if (options.local) {
-      site.addEventListener("afterBuild", () => {
+    site.addEventListener("afterBuild", () => {
+      // Run the local netlify server
+      if (options.local) {
         site.run("npx netlify-cms-proxy-server");
-      });
-    }
+      }
 
-    site.addEventListener("beforeSave", () => {
-      // config.yml
+      // Create config.yml
       const config = new Page();
       config.dest.path = posix.join(options.path, "config");
       config.dest.ext = ".yml";
       config.content = stringify({
         local_backend: options.local,
+        site_url: site.url("/", true),
         ...options.options,
       });
 
       site.pages.push(config);
 
-      // index.html
+      // Create index.html
       const configUrl = site.url(posix.join(options.path, "config.yml"));
       const index = new Page();
       index.dest.path = posix.join(options.path, "index");
