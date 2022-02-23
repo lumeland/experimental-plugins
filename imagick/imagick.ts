@@ -1,8 +1,7 @@
 import { merge } from "lume/core/utils.ts";
 import { Page } from "lume/core/filesystem.ts";
-import { extname } from "lume/deps/path.ts";
 import binaryLoader from "lume/core/loaders/binary.ts";
-import { ImageMagick, initializeImageMagick } from "./deps.ts";
+import { ImageMagick, initializeImageMagick, MagickFormat } from "./deps.ts";
 
 import type { Site } from "lume/core.ts";
 import type { IMagickImage } from "./deps.ts";
@@ -19,10 +18,17 @@ export const defaults: Options = {
   extensions: [".jpg", ".jpeg", ".png"],
 };
 
-export type Transformation = (image: IMagickImage) => void;
-export type Transformations = (
-  page: Page,
-) => Record<string, Transformation> | undefined;
+export interface Transformation {
+  suffix?: string;
+  resize?: [number, number];
+  crop?: [number, number];
+  blur?: [number, number?];
+  sharpen?: [number, number?];
+  rotate?: number;
+  autoOrient?: boolean;
+  format?: MagickFormat;
+}
+export type Transformations = Transformation[];
 
 /** A plugin to transform images in Lume */
 export default function (userOptions?: Partial<Options>) {
@@ -30,42 +36,80 @@ export default function (userOptions?: Partial<Options>) {
 
   return (site: Site) => {
     site.loadAssets(options.extensions, binaryLoader);
-    site.process(options.extensions, transform);
+    site.process(options.extensions, imagick);
 
-    function transform(page: Page) {
-      const imagick = page.data.imagick as Transformations | undefined;
+    function imagick(page: Page) {
+      const imagick = page.data.imagick as
+        | Transformation
+        | Transformations
+        | undefined;
 
       if (!imagick) {
         return;
       }
 
-      const transformations = imagick(page);
-
-      if (!transformations) {
-        return;
-      }
-
       const content = page.content as Uint8Array;
+      const transformations = Array.isArray(imagick) ? imagick : [imagick];
+      const last = transformations[transformations.length - 1];
 
-      for (const [newUrl, transformation] of Object.entries(transformations)) {
-        ImageMagick.read(content, (image: IMagickImage) => {
-          transformation(image);
+      for (const transformation of transformations) {
+        const output = transformation === last
+          ? page
+          : page.duplicate({ imagick: undefined });
 
-          image.write((content: Uint8Array) => {
-            if (newUrl === page.dest.path + page.dest.ext) {
-              page.content = content;
-              return;
-            }
+        transform(content, output, transformation);
 
-            const newPage = page.duplicate({ url: newUrl, imagick: undefined });
-            const ext = extname(newUrl);
-            newPage.content = new Uint8Array(content);
-            newPage.dest.ext = ext;
-            newPage.dest.path = newUrl.slice(0, -ext.length);
-            site.pages.push(newPage);
-          });
-        });
+        if (output !== page) {
+          site.pages.push(output);
+        }
       }
     }
   };
+}
+
+function transform(
+  content: Uint8Array,
+  page: Page,
+  transformation: Transformation,
+): void {
+  let format: MagickFormat | undefined = undefined;
+
+  ImageMagick.read(content, (image: IMagickImage) => {
+    for (const [name, args] of Object.entries(transformation)) {
+      if (args === undefined || args === null || args === false) {
+        continue;
+      }
+
+      switch (name) {
+        case "suffix":
+          page.path += args;
+          break;
+
+        case "resize":
+        case "crop":
+        case "blur":
+        case "sharpen":
+          image[name](...args as [number, number]);
+          break;
+
+        case "rotate":
+          image.rotate(args);
+          break;
+
+        case "autoOrient":
+          image.autoOrient();
+          break;
+
+        case "format":
+          format = args;
+          page.ext = "." + args.toLowerCase();
+          break;
+      }
+    }
+
+    image.write(
+      (content: Uint8Array) => page.content = new Uint8Array(content),
+      format,
+    );
+  });
 }

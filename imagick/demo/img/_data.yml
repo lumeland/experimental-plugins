@@ -1,0 +1,3 @@
+imagick:
+  resize: [300, 300]
+  blur: [10, 10]
