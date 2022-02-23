@@ -1,21 +1,24 @@
 import { merge } from "lume/core/utils.ts";
-import { Page } from "lume/core/filesystem.ts";
 import binaryLoader from "lume/core/loaders/binary.ts";
-import { ImageMagick, initializeImageMagick, MagickFormat } from "./deps.ts";
+import { ImageMagick, initializeImageMagick } from "./deps.ts";
 
-import type { Site } from "lume/core.ts";
-import type { IMagickImage } from "./deps.ts";
+import type { Page, Site } from "lume/core.ts";
+import type { IMagickImage, MagickFormat } from "./deps.ts";
 
 await initializeImageMagick(); // make sure to initialize first!
 
 export interface Options {
   /** The list extensions this plugin applies to */
   extensions: string[];
+
+  /** The key name for the transformations definitions */
+  name: string;
 }
 
 // Default options
 export const defaults: Options = {
   extensions: [".jpg", ".jpeg", ".png"],
+  name: "imagick",
 };
 
 export interface Transformation {
@@ -39,7 +42,7 @@ export default function (userOptions?: Partial<Options>) {
     site.process(options.extensions, imagick);
 
     function imagick(page: Page) {
-      const imagick = page.data.imagick as
+      const imagick = page.data[options.name] as
         | Transformation
         | Transformations
         | undefined;
@@ -55,7 +58,7 @@ export default function (userOptions?: Partial<Options>) {
       for (const transformation of transformations) {
         const output = transformation === last
           ? page
-          : page.duplicate({ imagick: undefined });
+          : page.duplicate({ [options.name]: undefined });
 
         transform(content, output, transformation);
 
