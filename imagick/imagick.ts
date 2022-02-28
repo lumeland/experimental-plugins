@@ -1,5 +1,6 @@
 import { merge } from "lume/core/utils.ts";
 import binaryLoader from "lume/core/loaders/binary.ts";
+import { Exception } from "lume/core/errors.ts";
 import { ImageMagick, initializeImageMagick } from "./deps.ts";
 
 import type { Page, Site } from "lume/core.ts";
@@ -13,12 +14,38 @@ export interface Options {
 
   /** The key name for the transformations definitions */
   name: string;
+
+  /** Custom transform functions */
+  functions: {
+    // deno-lint-ignore no-explicit-any
+    [key: string]: (image: IMagickImage, ...args: any[]) => void;
+  };
 }
 
 // Default options
 export const defaults: Options = {
   extensions: [".jpg", ".jpeg", ".png"],
   name: "imagick",
+  functions: {
+    resize(image: IMagickImage, width: number, height = width): void {
+      image.resize(width, height);
+    },
+    crop(image: IMagickImage, width: number, height = width): void {
+      image.crop(width, height);
+    },
+    blur(image: IMagickImage, radius: number, sigma: number): void {
+      image.blur(radius, sigma);
+    },
+    sharpen(image: IMagickImage, radius: number, sigma: number): void {
+      image.sharpen(radius, sigma);
+    },
+    rotate(image: IMagickImage, degrees: number): void {
+      image.rotate(degrees);
+    },
+    autoOrient(image: IMagickImage): void {
+      image.autoOrient();
+    },
+  },
 };
 
 export interface Transformation {
@@ -31,6 +58,7 @@ export interface Transformation {
   autoOrient?: boolean;
   format?: MagickFormat;
 }
+
 export type Transformations = Transformation[];
 
 /** A plugin to transform images in Lume */
@@ -47,9 +75,13 @@ export default function (userOptions?: Partial<Options>) {
         | Transformations
         | undefined;
 
-      if (!imagick) {
+      if (!imagick || page._data.imagick === JSON.stringify(imagick)) {
+        // No transformation or already processed
         return;
       }
+
+      page._data.imagick = JSON.stringify(imagick);
+      site.logger.log("🎨", `${page.src.path}${page.src.ext}`);
 
       const content = page.content as Uint8Array;
       const transformations = Array.isArray(imagick) ? imagick : [imagick];
@@ -60,7 +92,7 @@ export default function (userOptions?: Partial<Options>) {
           ? page
           : page.duplicate({ [options.name]: undefined });
 
-        transform(content, output, transformation);
+        transform(content, output, transformation, options);
 
         if (output !== page) {
           site.pages.push(output);
@@ -74,6 +106,7 @@ function transform(
   content: Uint8Array,
   page: Page,
   transformation: Transformation,
+  options: Options,
 ): void {
   let format: MagickFormat | undefined = undefined;
 
@@ -88,25 +121,21 @@ function transform(
           page.path += args;
           break;
 
-        case "resize":
-        case "crop":
-        case "blur":
-        case "sharpen":
-          image[name](...args as [number, number]);
-          break;
-
-        case "rotate":
-          image.rotate(args);
-          break;
-
-        case "autoOrient":
-          image.autoOrient();
-          break;
-
         case "format":
           format = args;
           page.ext = "." + args.toLowerCase();
           break;
+
+        default:
+          if (!options.functions[name]) {
+            throw new Exception(`Unknown transformation: ${name}`);
+          }
+
+          if (Array.isArray(args)) {
+            options.functions[name](image, ...args);
+          } else {
+            options.functions[name](image, args);
+          }
       }
     }
 
