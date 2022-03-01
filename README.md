@@ -6,12 +6,6 @@ A repo to test and experiment with plugins for Lume
 
 Use [Windi CSS](https://windicss.org/) in your website.
 
-## SASS
-
-Add (very limited) support for [SASS](https://sass-lang.com/).
-
-- It uses [denosass](https://github.com/hironichu/denosass) library.
-
 ## Minify
 
 Minify HTML, CSS, JS and JSON files using
