@@ -27,6 +27,10 @@ Minify HTML, CSS, JS and JSON files using
 To transform image files using
 [ImageMagick](https://github.com/lumeland/imagemagick-deno).
 
+## Jimp
+
+To transform image files using [Jimp](https://github.com/oliver-moran/jimp).
+
 ## NetlifyCMS
 
 To use [NetlifyCMS](https://www.netlifycms.org/).
