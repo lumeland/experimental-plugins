@@ -50,13 +50,15 @@ export const defaults: Options = {
 
 export interface Transformation {
   suffix?: string;
-  resize?: [number, number];
-  crop?: [number, number];
+  resize?: [number, number?];
+  crop?: [number, number?];
   blur?: [number, number?];
   sharpen?: [number, number?];
   rotate?: number;
   autoOrient?: boolean;
   format?: MagickFormat;
+  // deno-lint-ignore no-explicit-any
+  [key: string]: any;
 }
 
 export type Transformations = Transformation[];
