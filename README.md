@@ -6,6 +6,10 @@ A repo to test and experiment with plugins for Lume
 
 Use [Windi CSS](https://windicss.org/) in your website.
 
+## Prism
+
+Use [Prism](https://prismjs.com/) as a syntax highlighter.
+
 ## Minify
 
 Minify HTML, CSS, JS and JSON files using
