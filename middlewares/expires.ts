@@ -25,7 +25,7 @@ export const defaults: Options = {
 };
 
 /** Set the Expires header for better caching */
-export default function expires(userOptions: Partial<Options>): Middleware {
+export default function expires(userOptions?: Partial<Options>): Middleware {
   const options = { ...defaults, ...userOptions };
 
   return async (request, next) => {
