@@ -6,10 +6,19 @@ import { stringify } from "lume/deps/yaml.ts";
 import type { Site } from "lume/core.ts";
 
 export interface Options {
-  local?: boolean;
+  /** Path of a css file with custom styles for the preview */
+  previewStyle?: string;
+
+  /** Path of the admin */
   path: string;
+
+  /** Data key of the configuration */
   configKey: string;
+
+  /** Whether use Netlify Identity */
   netlifyIdentity: boolean;
+
+  /** Custom HTML code to append in the index.html page */
   extraHTML: string;
 }
 
@@ -25,12 +34,10 @@ export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    if (options.local === undefined) {
-      options.local = site.options.location.hostname === "localhost";
-    }
+    const local_backend = site.options.location.hostname === "localhost";
 
     // Run the local netlify server
-    if (options.local) {
+    if (local_backend) {
       site.addEventListener("afterBuild", () => {
         site.run("npx netlify-cms-proxy-server");
       });
@@ -49,37 +56,56 @@ export default function (userOptions?: Partial<Options>) {
       site.pages.push(Page.create(
         configUrl,
         stringify({
-          local_backend: options.local,
-          site_url: site.url("/", true),
           ...config,
+          site_url: site.url("/", true),
+          local_backend,
         }),
       ));
 
       // Create index.html
-      const body = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin</title>
-      </head>
-      <body>
-      <link href="${site.url(configUrl)}" type="text/yaml" rel="cms-config-url">
-      <script src="https://unpkg.com/netlify-cms@^2.0.0/dist/netlify-cms.js"></script>
-      ${
-        options.netlifyIdentity
-          ? `<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>`
-          : ""
+      const code = [];
+      code.push(
+        `<link href="${
+          site.url(configUrl)
+        }" type="text/yaml" rel="cms-config-url">`,
+      );
+      code.push(
+        `<script src="https://unpkg.com/netlify-cms@^2.0.0/dist/netlify-cms.js"></script>`,
+      );
+
+      if (options.netlifyIdentity) {
+        code.push(
+          `<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>`,
+        );
       }
-      ${options.extraHTML || ""}
-      </body>
-      </html>
-      `;
+
+      if (options.extraHTML) {
+        code.push(options.extraHTML);
+      }
+
+      if (options.previewStyle) {
+        code.push(
+          `<script>CMS.registerPreviewStyle("${
+            site.url(options.previewStyle)
+          }");</script>`,
+        );
+      }
 
       site.pages.push(Page.create(
         posix.join(options.path, "index.html"),
-        body,
+        `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Admin</title>
+        </head>
+        <body>
+        ${code.join("")}
+        </body>
+        </html>
+        `,
       ));
     });
   };
