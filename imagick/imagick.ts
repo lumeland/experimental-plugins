@@ -114,10 +114,6 @@ function transform(
 
   ImageMagick.read(content, (image: IMagickImage) => {
     for (const [name, args] of Object.entries(transformation)) {
-      if (args === undefined || args === null || args === false) {
-        continue;
-      }
-
       switch (name) {
         case "suffix":
           page.path += args;

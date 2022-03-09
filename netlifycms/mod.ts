@@ -6,17 +6,16 @@ import { stringify } from "lume/deps/yaml.ts";
 import type { Site } from "lume/core.ts";
 
 export interface Options {
-  local: boolean;
+  local?: boolean;
   path: string;
-  options: Record<string, unknown>;
+  configKey: string;
   netlifyIdentity: boolean;
   extraHTML: string;
 }
 
 const defaults: Options = {
-  local: false,
   path: "/admin/",
-  options: {},
+  configKey: "netlifycms",
   netlifyIdentity: false,
   extraHTML: "",
 };
@@ -26,30 +25,38 @@ export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    site.addEventListener("afterBuild", () => {
-      // Run the local netlify server
-      if (options.local) {
+    if (options.local === undefined) {
+      options.local = site.options.location.hostname === "localhost";
+    }
+
+    // Run the local netlify server
+    if (options.local) {
+      site.addEventListener("afterBuild", () => {
         site.run("npx netlify-cms-proxy-server");
-      }
+      });
+    }
+
+    // Build the admin page
+    site.addEventListener("beforeSave", () => {
+      const root = site.source.root!;
+      const config: Record<string, unknown> =
+        root.data[options.configKey] as Record<string, unknown> | undefined ||
+        {};
 
       // Create config.yml
-      const config = new Page();
-      config.dest.path = posix.join(options.path, "config");
-      config.dest.ext = ".yml";
-      config.content = stringify({
-        local_backend: options.local,
-        site_url: site.url("/", true),
-        ...options.options,
-      });
+      const configUrl = posix.join(options.path, "config.yml");
 
-      site.pages.push(config);
+      site.pages.push(Page.create(
+        configUrl,
+        stringify({
+          local_backend: options.local,
+          site_url: site.url("/", true),
+          ...config,
+        }),
+      ));
 
       // Create index.html
-      const configUrl = site.url(posix.join(options.path, "config.yml"));
-      const index = new Page();
-      index.dest.path = posix.join(options.path, "index");
-      index.dest.ext = ".html";
-      index.content = `
+      const body = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -58,7 +65,7 @@ export default function (userOptions?: Partial<Options>) {
         <title>Admin</title>
       </head>
       <body>
-      <link href="${configUrl}" type="text/yaml" rel="cms-config-url">
+      <link href="${site.url(configUrl)}" type="text/yaml" rel="cms-config-url">
       <script src="https://unpkg.com/netlify-cms@^2.0.0/dist/netlify-cms.js"></script>
       ${
         options.netlifyIdentity
@@ -70,7 +77,10 @@ export default function (userOptions?: Partial<Options>) {
       </html>
       `;
 
-      site.pages.push(index);
+      site.pages.push(Page.create(
+        posix.join(options.path, "index.html"),
+        body,
+      ));
     });
   };
 }
