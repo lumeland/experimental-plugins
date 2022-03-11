@@ -15,14 +15,31 @@ export interface Options {
 }
 
 export interface MetaData {
+  /** The name of the site */
   site: string;
+
+  /** The title of the page */
   title: string;
+
+  /** The page language */
   lang: string;
+
+  /** The description of the page */
   description: string;
+
+  /** The image of the page */
   image: string;
+
+  /** The icon of the site */
   icon: string;
+
+  /** The page keywords */
   keywords: string[];
+
+  /** The twitter username */
   twitter: string;
+
+  /** The color theme */
   color: string;
 }
 
@@ -40,15 +57,16 @@ export default function (userOptions?: Partial<Options>) {
     site.process(options.extensions, metas);
 
     function metas(page: Page) {
-      const { document } = page;
+      const pageMetas = page.data[options.name] as MetaData | undefined;
 
-      if (!document) {
+      if (!pageMetas || !page.document) {
         return;
       }
 
+      const { document } = page;
       const metas: Partial<MetaData> = {
         ...options.defaults,
-        ...page.data[options.name] as MetaData | undefined,
+        ...pageMetas,
       };
 
       const url = site.url(page.data.url as string, true);
