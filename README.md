@@ -29,6 +29,10 @@ To transform image files using
 
 To transform image files using [Jimp](https://github.com/oliver-moran/jimp).
 
+## Metas
+
+To add automatically common meta tags for social sharing and SEO.
+
 ## NetlifyCMS
 
 To use [NetlifyCMS](https://www.netlifycms.org/).
