@@ -128,4 +128,5 @@ function addMeta(
   meta.setAttribute(propName, propValue);
   meta.setAttribute("content", content);
   document.head.appendChild(meta);
+  document.head.appendChild(document.createTextNode("\n"));
 }
