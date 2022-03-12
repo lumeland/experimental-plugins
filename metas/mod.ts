@@ -78,7 +78,7 @@ export default function (userOptions?: Partial<Options>) {
       addMeta(document, "property", "og:site_name", metas.site);
       addMeta(document, "property", "og:locale", metas.lang);
       addMeta(document, "property", "og:title", metas.title, 65);
-      addMeta(document, "property", "og:description", metas.description, 156);
+      addMeta(document, "property", "og:description", metas.description, 155);
       addMeta(document, "property", "og:url", url);
       addMeta(document, "property", "og:image", image || icon);
 
