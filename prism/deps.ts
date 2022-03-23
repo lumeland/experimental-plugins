@@ -1,5 +1,5 @@
 export { default } from "https://cdn.esm.sh/prismjs@1.27.0";
-const componentsPath = "https://cdn.esm.sh/prismjs@1.27.0/components/";
+const prismPath = "https://cdn.esm.sh/prismjs@1.27.0";
 
 // https://github.com/PrismJS/prism/blob/master/plugins/autoloader/prism-autoloader.js
 const dependencies: Record<string, string | string[]> = {
@@ -266,7 +266,7 @@ export async function loadLanguages(languages: string[]) {
 async function loadLanguage(
   language: string,
   languages: Record<string, Language>,
-) {
+): Promise<void> {
   language = aliases[language] || language;
 
   if (languages[language]) {
@@ -282,6 +282,5 @@ async function loadLanguage(
     }
   }
 
-  const module = await import(`${componentsPath}prism-${language}.js`);
-  languages[language] = module.default;
+  await import(`${prismPath}/components/prism-${language}.js`);
 }

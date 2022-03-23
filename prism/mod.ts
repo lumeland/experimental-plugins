@@ -25,13 +25,10 @@ export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    site.addEventListener("beforeBuild", async () => {
-      const languages = await loadLanguages(options.languages);
-
-      for (const [language, data] of Object.entries(languages)) {
-        Prism.languages[language] = data;
-      }
-    });
+    site.addEventListener(
+      "beforeBuild",
+      () => loadLanguages(options.languages),
+    );
     site.process(options.extensions, prism);
 
     function prism(page: Page) {
