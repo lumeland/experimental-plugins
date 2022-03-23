@@ -1,9 +1,0 @@
-imagick:
-  - resize: [128, 128]
-    format: jpg
-  - resize: [64, 64]
-    suffix: -small
-    format: jpg
-  - resize: [256, 256]
-    suffix: -big
-    format: jpg
