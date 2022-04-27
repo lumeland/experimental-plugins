@@ -1,5 +1,5 @@
-export { default } from "https://cdn.esm.sh/prismjs@1.27.0";
-const prismPath = "https://cdn.esm.sh/prismjs@1.27.0";
+export { default } from "https://esm.sh/prismjs@1.28.0";
+const prismPath = "https://esm.sh/prismjs@1.28.0";
 
 // https://github.com/PrismJS/prism/blob/master/plugins/autoloader/prism-autoloader.js
 const dependencies: Record<string, string | string[]> = {
@@ -224,6 +224,7 @@ const aliases: Record<string, string> = {
   "rkt": "racket",
   "razor": "cshtml",
   "rpy": "renpy",
+  "res": "rescript",
   "robot": "robotframework",
   "rb": "ruby",
   "sh-session": "shell-session",
