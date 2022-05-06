@@ -1,5 +1,5 @@
 import { createReporter } from "./deps.ts";
-import { merge } from "lume/core/utils.ts";
+import { merge } from "https:/deno.land/x/lume/core/utils.ts";
 
 import type { Middleware, RequestHandler } from "lume/core.ts";
 import type { ReporterOptions } from "./deps.ts";
