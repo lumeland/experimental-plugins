@@ -8,7 +8,7 @@ export type Options = ReporterOptions;
 
 export const defaults: Options = {
   filter(_request, response) {
-    return response.status === 200 &&
+    return [200, 304].includes(response.status) &&
       !!response.headers.get("content-type")?.includes("text/html");
   },
 };
