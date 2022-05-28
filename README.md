@@ -6,10 +6,6 @@ A repo to test and experiment with plugins for Lume
 
 Use [Windi CSS](https://windicss.org/) in your website.
 
-## Prism
-
-Use [Prism](https://prismjs.com/) as a syntax highlighter.
-
 ## Minify
 
 Minify HTML, CSS, JS and JSON files using
@@ -24,6 +20,11 @@ Minify HTML, CSS, JS and JSON files using
 
 To transform image files using [Jimp](https://github.com/oliver-moran/jimp).
 
-## Metas
+## Google Analytics
 
-To add automatically common meta tags for social sharing and SEO.
+Middleware to integrate Google Analytics in backend, using
+[g_a](https://deno.land/x/g_a@0.1.2/mod.ts)
+
+## Basic Auth
+
+Middleware to implement a Basic Authentication
