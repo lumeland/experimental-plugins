@@ -12,25 +12,17 @@ export interface Options {
   remarkPlugins?: unknown[],
 
   /** List of rehype plugins to use */
-  rehypePlugins?: unknown[]
+  rehypePlugins?: unknown[],
+
+	/** A preset to completely override the default behavior */
+  preset?: unified.Preset
 }
 
 // Default options
 export const defaults: Options = {
   extensions: [".md"],
   // By default, GitHub-flavored markdown is enabled
-  remarkPlugins: [remarkGfm],
-  rehypePlugins: []
-}
-
-export function loadPlugin(plugin: unknown, engine: unified.Processor) {
-  if (Array.isArray(plugin)) {
-    const [pluginWithOps, ...opts] = plugin;
-    engine.use(pluginWithOps, ...opts);
-  } else {
-    // @ts-ignore: Some plugins may not have types available
-    engine.use(plugin);
-  }
+  remarkPlugins: [remarkGfm]
 }
 
 /** Template engine to render Markdown files with Remark */
@@ -62,26 +54,31 @@ export default function (userOptions?: Partial<Options>) {
     // @ts-ignore: This expression is not callable
     const engine = unified.unified();
 
-    // Register remark-parse to generate MDAST
-    // @ts-ignore: remark-parse does not have correct types available
-    engine.use(remarkParse);
+    // If a preset is available, use that an ignore the list of plugins
+    if (options.preset) {
+      engine.use(options.preset);
+    } else {
+      const plugins = [];
 
-    // Register remark plugins
-    options.remarkPlugins?.forEach((plugin: unknown) => loadPlugin(plugin, engine));
+      // Add remark-parse to generate MDAST
+      plugins.push(remarkParse);
 
-    // Register remark-rehype to generate HAST
-    engine.use(remarkRehype, {
-      allowDangerousHtml: true
-    })
+      // Add remark plugins
+      options.remarkPlugins?.forEach(plugin => plugins.push(plugin));
 
-    // Register rehype plugins
-    options.rehypePlugins?.forEach((plugin: unknown) => loadPlugin(plugin, engine));
+      // Add remark-rehype to generate HAST
+      plugins.push([remarkRehype, { allowDangerousHtml: true }]);
 
-    // Register rehype-stringify to output HTML
-    // @ts-ignore: rehype-stringify does not have correct types available
-    engine.use(rehypeStringify, {
-      allowDangerousHtml: true
-    })
+      // Add rehype plugins
+      options.rehypePlugins?.forEach(plugin => plugins.push(plugin));
+
+      // Add rehype-stringify to output HTML
+      plugins.push([rehypeStringify, { allowDangerousHtml: true }]);
+
+      // Register all plugins
+      // @ts-ignore: let unified take care of loading all the plugins
+      engine.use(plugins);
+    }
 
     // Load the pages
     site.loadPages(options.extensions, loader, new MarkdownEngine(engine));
