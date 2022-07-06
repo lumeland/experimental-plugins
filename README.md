@@ -2,6 +2,10 @@
 
 A repo to test and experiment with plugins for Lume
 
+## Remark
+
+Use [Remark](https://github.com/remarkjs/remark) and [Rehype](https://github.com/rehypejs/rehype) as an alternative markdown processor.
+
 ## Windi CSS
 
 Use [Windi CSS](https://windicss.org/) in your website.
