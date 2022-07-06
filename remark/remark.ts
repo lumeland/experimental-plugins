@@ -1,21 +1,29 @@
 import loader from "lume/core/loaders/text.ts";
 import { merge } from "lume/core/utils.ts";
-import { unified, remarkParse, remarkGfm, remarkRehype, rehypeRaw, rehypeSanitize, rehypeStringify } from "./deps.ts";
+import {
+  rehypeRaw,
+  rehypeSanitize,
+  rehypeStringify,
+  remarkGfm,
+  remarkParse,
+  remarkRehype,
+  unified,
+} from "./deps.ts";
 
 import type { Data, Engine, Helper, Site } from "lume/core.ts";
 
 export interface Options {
   /** List of extensions this plugin applies to */
-  extensions: string[],
+  extensions: string[];
 
   /** List of remark plugins to use */
-  remarkPlugins?: unknown[],
+  remarkPlugins?: unknown[];
 
   /** List of rehype plugins to use */
-  rehypePlugins?: unknown[],
+  rehypePlugins?: unknown[];
 
   /** Flag to turn on HTML sanitization to prevent XSS */
-  sanitize?: boolean
+  sanitize?: boolean;
 }
 
 // Default options
@@ -23,8 +31,8 @@ export const defaults: Options = {
   extensions: [".md"],
   // By default, GitHub-flavored markdown is enabled
   remarkPlugins: [remarkGfm],
-  sanitize: false
-}
+  sanitize: false,
+};
 
 /** Template engine to render Markdown files with Remark */
 export class MarkdownEngine implements Engine {
@@ -34,17 +42,17 @@ export class MarkdownEngine implements Engine {
     this.engine = engine;
   }
 
-  deleteCache() { }
+  deleteCache() {}
 
   render(content: string, data?: Data, filename?: string): Promise<string> {
-    return this.engine.process(content).then(result => result.toString());
+    return this.engine.process(content).then((result) => result.toString());
   }
 
   renderSync(content: string, data?: Data, filename?: string): string {
     return this.engine.processSync(content).toString();
   }
 
-  addHelper() { }
+  addHelper() {}
 }
 
 /** Register the plugin to support Markdown */
@@ -61,7 +69,7 @@ export default function (userOptions?: Partial<Options>) {
     plugins.push(remarkParse);
 
     // Add remark plugins
-    options.remarkPlugins?.forEach(plugin => plugins.push(plugin));
+    options.remarkPlugins?.forEach((plugin) => plugins.push(plugin));
 
     // Add remark-rehype to generate HAST
     plugins.push([remarkRehype, { allowDangerousHtml: true }]);
@@ -72,7 +80,7 @@ export default function (userOptions?: Partial<Options>) {
     }
 
     // Add rehype plugins
-    options.rehypePlugins?.forEach(plugin => plugins.push(plugin));
+    options.rehypePlugins?.forEach((plugin) => plugins.push(plugin));
 
     if (options.sanitize) {
       // Add rehype-sanitize to make sure HTML is safe
@@ -96,11 +104,13 @@ export default function (userOptions?: Partial<Options>) {
     site.filter("mdAsync", filter as Helper, true);
 
     function filter(string: string): Promise<string> {
-      return engine.process(string?.toString() || "").then(result => result.toString().trim());
+      return engine.process(string?.toString() || "").then((result) =>
+        result.toString().trim()
+      );
     }
 
     function filterSync(string: string): string {
       return engine.processSync(string?.toString() || "").toString().trim();
     }
-  }
+  };
 }

@@ -8,16 +8,17 @@ const site = lume();
 
 site.use(remark({
   remarkPlugins: [
-    remarkSmartyPants
+    remarkSmartyPants,
   ],
   rehypePlugins: [
     rehypeExternalLinks,
     [
-      rehypeAutolinkHeadings, {
-        behavior: "append"
-      }
-    ]
-  ]
+      rehypeAutolinkHeadings,
+      {
+        behavior: "append",
+      },
+    ],
+  ],
 }));
 
 export default site;
