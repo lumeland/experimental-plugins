@@ -1,6 +1,6 @@
 import loader from "lume/core/loaders/text.ts";
 import { merge } from "lume/core/utils.ts";
-import { unified, remarkParse, remarkGfm, remarkRehype, rehypeStringify } from "./deps.ts";
+import { unified, remarkParse, remarkGfm, remarkRehype, rehypeRaw, rehypeSanitize, rehypeStringify } from "./deps.ts";
 
 import type { Data, Engine, Helper, Site } from "lume/core.ts";
 
@@ -13,13 +13,17 @@ export interface Options {
 
   /** List of rehype plugins to use */
   rehypePlugins?: unknown[],
+
+  /** Flag to turn on HTML sanitization to prevent XSS */
+  sanitize?: boolean
 }
 
 // Default options
 export const defaults: Options = {
   extensions: [".md"],
   // By default, GitHub-flavored markdown is enabled
-  remarkPlugins: [remarkGfm]
+  remarkPlugins: [remarkGfm],
+  sanitize: false
 }
 
 /** Template engine to render Markdown files with Remark */
@@ -62,11 +66,23 @@ export default function (userOptions?: Partial<Options>) {
     // Add remark-rehype to generate HAST
     plugins.push([remarkRehype, { allowDangerousHtml: true }]);
 
+    if (options.sanitize) {
+      // Add rehype-raw to convert raw HTML to HAST
+      plugins.push(rehypeRaw);
+    }
+
     // Add rehype plugins
     options.rehypePlugins?.forEach(plugin => plugins.push(plugin));
 
-    // Add rehype-stringify to output HTML
-    plugins.push([rehypeStringify, { allowDangerousHtml: true }]);
+    if (options.sanitize) {
+      // Add rehype-sanitize to make sure HTML is safe
+      plugins.push(rehypeSanitize);
+      // Add rehype-stringify to output HTML ignoring raw HTML nodes
+      plugins.push(rehypeStringify);
+    } else {
+      // Add rehype-stringify to output HTML
+      plugins.push([rehypeStringify, { allowDangerousHtml: true }]);
+    }
 
     // Register all plugins
     // @ts-ignore: let unified take care of loading all the plugins
