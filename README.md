@@ -4,7 +4,13 @@ A repo to test and experiment with plugins for Lume
 
 ## Remark
 
-Use [Remark](https://github.com/remarkjs/remark) and [Rehype](https://github.com/rehypejs/rehype) as an alternative markdown processor.
+Use [Remark](https://github.com/remarkjs/remark) and
+[Rehype](https://github.com/rehypejs/rehype) as an alternative markdown
+processor.
+
+## i18n
+
+To use [i18next](https://www.i18next.com/) library for translations.
 
 ## Windi CSS
 
