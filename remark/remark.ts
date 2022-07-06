@@ -13,9 +13,6 @@ export interface Options {
 
   /** List of rehype plugins to use */
   rehypePlugins?: unknown[],
-
-	/** A preset to completely override the default behavior */
-  preset?: unified.Preset
 }
 
 // Default options
@@ -54,38 +51,33 @@ export default function (userOptions?: Partial<Options>) {
     // @ts-ignore: This expression is not callable
     const engine = unified.unified();
 
-    // If a preset is available, use that an ignore the list of plugins
-    if (options.preset) {
-      engine.use(options.preset);
-    } else {
-      const plugins = [];
+    const plugins = [];
 
-      // Add remark-parse to generate MDAST
-      plugins.push(remarkParse);
+    // Add remark-parse to generate MDAST
+    plugins.push(remarkParse);
 
-      // Add remark plugins
-      options.remarkPlugins?.forEach(plugin => plugins.push(plugin));
+    // Add remark plugins
+    options.remarkPlugins?.forEach(plugin => plugins.push(plugin));
 
-      // Add remark-rehype to generate HAST
-      plugins.push([remarkRehype, { allowDangerousHtml: true }]);
+    // Add remark-rehype to generate HAST
+    plugins.push([remarkRehype, { allowDangerousHtml: true }]);
 
-      // Add rehype plugins
-      options.rehypePlugins?.forEach(plugin => plugins.push(plugin));
+    // Add rehype plugins
+    options.rehypePlugins?.forEach(plugin => plugins.push(plugin));
 
-      // Add rehype-stringify to output HTML
-      plugins.push([rehypeStringify, { allowDangerousHtml: true }]);
+    // Add rehype-stringify to output HTML
+    plugins.push([rehypeStringify, { allowDangerousHtml: true }]);
 
-      // Register all plugins
-      // @ts-ignore: let unified take care of loading all the plugins
-      engine.use(plugins);
-    }
+    // Register all plugins
+    // @ts-ignore: let unified take care of loading all the plugins
+    engine.use(plugins);
 
     // Load the pages
     site.loadPages(options.extensions, loader, new MarkdownEngine(engine));
 
-    // Register the md and mdSync filters
-    site.filter("md", filter as Helper);
-    site.filter("mdSync", filterSync as Helper);
+    // Register the md and mdAsync filters
+    site.filter("md", filterSync as Helper);
+    site.filter("mdAsync", filter as Helper, true);
 
     function filter(string: string): Promise<string> {
       return engine.process(string?.toString() || "").then(result => result.toString().trim());
