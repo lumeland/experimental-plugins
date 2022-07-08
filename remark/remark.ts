@@ -68,6 +68,11 @@ export default function (userOptions?: Partial<Options>) {
     // Add remark-parse to generate MDAST
     plugins.push(remarkParse);
 
+    // Add default remark plugins
+    defaults.remarkPlugins?.forEach((defaultPlugin) =>
+      plugins.push(defaultPlugin)
+    );
+
     // Add remark plugins
     options.remarkPlugins?.forEach((plugin) => plugins.push(plugin));
 
