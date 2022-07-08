@@ -39,7 +39,6 @@ export default function i18n(userOptions?: Partial<Options>): Plugin {
           lng,
           supportedLngs,
           fallbackLng,
-          debug: true,
           ...options.options,
         });
       }
