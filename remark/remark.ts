@@ -24,6 +24,9 @@ export interface Options {
 
   /** Flag to turn on HTML sanitization to prevent XSS */
   sanitize?: boolean;
+
+  /** Flag to override the default plugins */
+  overrideDefaultPlugins?: boolean;
 }
 
 // Default options
@@ -67,6 +70,13 @@ export default function (userOptions?: Partial<Options>) {
 
     // Add remark-parse to generate MDAST
     plugins.push(remarkParse);
+
+    if (!options.overrideDefaultPlugins) {
+      // Add default remark plugins
+      defaults.remarkPlugins?.forEach((defaultPlugin) =>
+        plugins.push(defaultPlugin)
+      );
+    }
 
     // Add remark plugins
     options.remarkPlugins?.forEach((plugin) => plugins.push(plugin));
