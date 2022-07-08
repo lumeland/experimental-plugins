@@ -10,7 +10,7 @@ import {
   unified,
 } from "./deps.ts";
 
-import type { Data, Engine, Helper, Site } from "lume/core.ts";
+import type { Engine, Helper, Site } from "lume/core.ts";
 
 export interface Options {
   /** List of extensions this plugin applies to */
@@ -44,11 +44,11 @@ export class MarkdownEngine implements Engine {
 
   deleteCache() {}
 
-  render(content: string, data?: Data, filename?: string): Promise<string> {
-    return this.engine.process(content).then((result) => result.toString());
+  async render(content: string): Promise<string> {
+    return (await this.engine.process(content)).toString();
   }
 
-  renderSync(content: string, data?: Data, filename?: string): string {
+  renderSync(content: string): string {
     return this.engine.processSync(content).toString();
   }
 
@@ -97,20 +97,19 @@ export default function (userOptions?: Partial<Options>) {
     engine.use(plugins);
 
     // Load the pages
-    site.loadPages(options.extensions, loader, new MarkdownEngine(engine));
+    const remarkEngine = new MarkdownEngine(engine);
+    site.loadPages(options.extensions, loader, remarkEngine);
 
     // Register the md and mdAsync filters
-    site.filter("md", filterSync as Helper);
-    site.filter("mdAsync", filter as Helper, true);
+    site.filter("md", filter as Helper);
+    site.filter("mdAsync", filterAsync as Helper, true);
 
-    function filter(string: string): Promise<string> {
-      return engine.process(string?.toString() || "").then((result) =>
-        result.toString().trim()
-      );
+    async function filterAsync(string: string): Promise<string> {
+      return (await remarkEngine.render(string)).trim();
     }
 
-    function filterSync(string: string): string {
-      return engine.processSync(string?.toString() || "").toString().trim();
+    function filter(string: string): string {
+      return remarkEngine.renderSync(string).trim();
     }
   };
 }
