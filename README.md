@@ -38,3 +38,10 @@ Middleware to integrate Google Analytics in backend, using
 ## Basic Auth
 
 Middleware to implement a Basic Authentication
+
+## Sitemap
+
+To generate a sitemap.xml from html files after build.
+
+- Maybe needs to be tested with various URL plugins enabled (I used it with
+`slugify_urls` enabled)
