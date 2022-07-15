@@ -8,6 +8,9 @@ Use [Remark](https://github.com/remarkjs/remark) and
 [Rehype](https://github.com/rehypejs/rehype) as an alternative markdown
 processor.
 
+## NanoJSX
+To use [Nano JSX](https://nanojsx.io/) to render JSX pages.
+
 ## i18n
 
 To use [i18next](https://www.i18next.com/) library for translations.
