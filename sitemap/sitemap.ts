@@ -1,70 +1,70 @@
 import { merge } from "lume/core/utils.ts";
-import textLoader from "lume/core/loaders/text.ts";
+import { Page } from "lume/core/filesystem.ts";
+import { buildFilter, buildSort } from "lume/plugins/search.ts";
 
-import type { Page, Site } from "lume/core.ts";
+import type { Site } from "lume/core.ts";
 
 export interface Options {
-  /** The public URL. By default detected automatically. */
-  location?: URL;
+  /** The filters to search pages included in the sitemap */
+  filters: string[];
 
-  /** The list of extensions this plugin applies to */
-  extensions: string[];
+  /** The values to sort the sitemap */
+  sort: string[];
+
+  /** The default filters including the index page (only if custom `filters` are defined) */
+  defaultFilters: string[];
+
+  /** Set `true` append your filters to the defaults (only if custom `filters` are defined) */
+  keepDefaultFilters: boolean;
 }
 
 // Default options
 export const defaults: Options = {
-  extensions: [".html"],
+  filters: [],
+  sort: ["url=asc"],
+  defaultFilters: ["url=/"],
+  keepDefaultFilters: true,
 };
 
 type SitemapPages = Array<{
   url: string;
   date: string | undefined;
-  location: string | undefined;
 }>;
 
-/** A plugin to generate a sitemap.xml from html files after build */
+/** A plugin to generate a sitemap.xml from page files after build */
 export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
 
+  // If custom `filters` is defined, concatenate with `defaultFilters` (Index page)
+  if (options.keepDefaultFilters && userOptions?.filters?.length) {
+    options.filters = defaults.defaultFilters.concat(userOptions.filters);
+  }
+
   return (site: Site) => {
-    // Do not run the plugin in dev mode
-    if (site.options.dev) {
-      return;
-    }
+    site.addEventListener("afterRender", () => {
+      // Create the sitemap.xml page
+      const sitemap = Page.create("sitemap.xml", getSitemapContent(site));
 
-    options.location = (options.location instanceof URL)
-      ? options.location
-      : new URL(
-        options.location || site.options.location.href || "http://localhost",
-      );
+      // Add to the sitemap page to pages
+      site.pages.push(sitemap);
+    });
 
-    site.loadPages(options.extensions, textLoader);
-    site.process(options.extensions, collectSitemap);
+    function getSitemapContent(site: Site) {
+      const sitemapPages: Page[] = [];
 
-    site.addEventListener("afterBuild", saveSitemap);
-
-    const sitemapPages: SitemapPages = [];
-
-     /** Collect the generated .html files */
-    function collectSitemap(page: Page) {
-      // Ignore the 404 error page
-      if (page.dest.path.includes("404")) {
-        return;
+      if (Array.isArray(options.filters) && options?.filters?.length) {
+        options.filters.forEach((filter) => {
+          site.pages.filter(buildFilter(filter)).map((page: Page) => {
+            sitemapPages.push(page);
+          });
+        });
+      } else {
+        site.pages.forEach((page: Page) => {
+          sitemapPages.push(page);
+        });
       }
 
-      sitemapPages.push({
-        url: page.data.url as string,
-        date: page.data.date?.toISOString().slice(0, 10),
-        location: options.location?.origin,
-      });
-    }
-
-    /** Build and save the sitemap.xml file to destination */
-    async function saveSitemap() {
-      // Sort pages alphabetically
-      sitemapPages.sort(function (a, b) {
-        return a.url.localeCompare(b.url);
-      });
+      sitemapPages.sort(buildSort(options.sort));
 
       // deno-fmt-ignore
       const sitemap = `
@@ -72,24 +72,13 @@ export default function (userOptions?: Partial<Options>) {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   ${sitemapPages.map((page) => {
     return `<url>
-    <loc>${`${page.location}${page.url}`}</loc>
-    <lastmod>${page.date}</lastmod>
+    <loc>${`${site.options.location.origin}${page.data.url as string}`}</loc>
+    <lastmod>${page?.data?.date?.toISOString().slice(0, 10) as string}</lastmod>
   </url>
   `}).join("").trim()}
 </urlset>`.trim();
 
-      // alternatively. but I like the first.
-      /* let sitemap = `<?xml version="1.0" encoding="utf-8"?>\r\n`;
-      sitemap += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\r\n`;
-      sitemapPages.map((page) => {
-        sitemap += `  <url>\r\n`
-        sitemap += `    <loc>${`${page.site_url}${page.page_url}`}</loc>\r\n`
-        sitemap += `    <lastmod>${page.page_date}</lastmod>\r\n`
-        sitemap += `  </url>\r\n`;
-      })
-      sitemap += `</urlset>` */
-
-      await Deno.writeTextFile(site.dest("sitemap.xml"), sitemap);
+      return `${sitemap}`;
     }
   };
 }
