@@ -1,9 +1,6 @@
 import loader from "lume/core/loaders/text.ts";
 import { merge } from "lume/core/utils.ts";
 import {
-  hastUtilHasProperty,
-  hastUtilHeadingRank,
-  hastUtilToString,
   rehypeRaw,
   rehypeSanitize,
   rehypeStringify,
@@ -11,21 +8,9 @@ import {
   remarkParse,
   remarkRehype,
   unified,
-  unistUtilVisit,
 } from "./deps.ts";
 
-import type { Data, Engine, Helper, Page, Site } from "lume/core.ts";
-
-export interface MarkdownHeading {
-  /** Heading id */
-  id: string;
-
-  /** Rank or depth of the heading */
-  depth: number;
-
-  /** InnerText of the heading */
-  text: string;
-}
+import type { Data, Engine, Helper, Site } from "lume/core.ts";
 
 export interface Options {
   /** List of extensions this plugin applies to */
@@ -42,28 +27,6 @@ export interface Options {
 
   /** Flag to override the default plugins */
   overrideDefaultPlugins?: boolean;
-}
-
-const headings: MarkdownHeading[] = [];
-
-function rehypeCollectHeadings() {
-  // @ts-ignore: this is unist tree
-  return (tree) => {
-    // collect all headings
-    headings.length = 0;
-    unistUtilVisit.visit(tree, "element", (node) => {
-      const rank = hastUtilHeadingRank.headingRank(node);
-      if (
-        rank && node.properties && hastUtilHasProperty.hasProperty(node, "id")
-      ) {
-        headings.push({
-          id: node.properties.id,
-          depth: rank,
-          text: hastUtilToString.toString(node),
-        });
-      }
-    });
-  };
 }
 
 // Default options
@@ -84,22 +47,24 @@ export class MarkdownEngine implements Engine {
 
   deleteCache() {}
 
-  async render(content: string, data?: Data): Promise<string> {
-    const processed = (await this.engine.process(content)).toString();
-    if (data) {
-      // inject headings in data
-      data.headings = [...headings];
-    }
-    return processed;
+  async render(
+    content: string,
+    data?: Data,
+    filename?: string,
+  ): Promise<string> {
+    return (await this.engine.process({
+      value: content,
+      data: data || {},
+      path: filename,
+    })).toString();
   }
 
-  renderSync(content: string, data?: Data): string {
-    const processed = this.engine.processSync(content).toString();
-    if (data) {
-      // inject headings in data
-      data.headings = [...headings];
-    }
-    return processed;
+  renderSync(content: string, data?: Data, filename?: string): string {
+    return this.engine.processSync({
+      value: content,
+      data: data || {},
+      path: filename,
+    }).toString();
   }
 
   addHelper() {}
@@ -139,9 +104,6 @@ export default function (userOptions?: Partial<Options>) {
     // Add rehype plugins
     options.rehypePlugins?.forEach((plugin) => plugins.push(plugin));
 
-    // Add plugin to collect headings
-    plugins.push(rehypeCollectHeadings);
-
     if (options.sanitize) {
       // Add rehype-sanitize to make sure HTML is safe
       plugins.push(rehypeSanitize);
@@ -164,34 +126,29 @@ export default function (userOptions?: Partial<Options>) {
     site.filter("md", filter as Helper);
     site.filter("mdAsync", filterAsync as Helper, true);
 
-    async function filterAsync(content: string | Page): Promise<string | Page> {
-      const text = typeof content === "string"
-        ? content
-        : content.content as string;
-      const processed = (await remarkEngine.render(text)).trim();
-
-      if (typeof content !== "string") {
+    async function filterAsync(content: string | Data): Promise<string | Data> {
+      if (typeof content === "string") {
+        return (await remarkEngine.render(content)).trim();
+      } else {
+        const processed =
+          (await remarkEngine.render(content.content as string, content))
+            .trim();
         content.content = processed;
-        // @ts-ignore: inject headings in page data
-        content.headings = [...headings];
+        return content;
       }
-
-      return processed;
     }
 
-    function filter(content: string | Page): string | Page {
-      const text = typeof content === "string"
-        ? content
-        : content.content as string;
-      const processed = remarkEngine.renderSync(text).trim();
-
-      if (typeof content !== "string") {
+    function filter(content: string | Data): string | Data {
+      if (typeof content === "string") {
+        return remarkEngine.renderSync(content).trim();
+      } else {
+        const processed = remarkEngine.renderSync(
+          content.content as string,
+          content,
+        ).trim();
         content.content = processed;
-        // @ts-ignore: inject headings in page data
-        content.headings = [...headings];
+        return content;
       }
-
-      return processed;
     }
   };
 }
