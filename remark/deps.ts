@@ -4,4 +4,8 @@ export { default as rehypeStringify } from "https://esm.sh/rehype-stringify@9.0.
 export { default as remarkGfm } from "https://esm.sh/remark-gfm@3.0.1";
 export { default as remarkParse } from "https://esm.sh/remark-parse@10.0.1";
 export { default as remarkRehype } from "https://esm.sh/remark-rehype@10.1.0";
+export * as hastUtilHasProperty from "https://esm.sh/hast-util-has-property@2.0.0";
+export * as hastUtilHeadingRank from "https://esm.sh/hast-util-heading-rank@2.1.0";
+export * as hastUtilToString from "https://esm.sh/hast-util-to-string@2.0.0";
 export * as unified from "https://esm.sh/unified@10.1.2";
+export * as unistUtilVisit from "https://esm.sh/unist-util-visit@4.1.0";
