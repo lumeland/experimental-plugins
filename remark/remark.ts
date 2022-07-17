@@ -10,7 +10,7 @@ import {
   unified,
 } from "./deps.ts";
 
-import type { Engine, Helper, Site } from "lume/core.ts";
+import type { Data, Engine, Helper, Site } from "lume/core.ts";
 
 export interface Options {
   /** List of extensions this plugin applies to */
@@ -47,12 +47,24 @@ export class MarkdownEngine implements Engine {
 
   deleteCache() {}
 
-  async render(content: string): Promise<string> {
-    return (await this.engine.process(content)).toString();
+  async render(
+    content: string,
+    data?: Data,
+    filename?: string,
+  ): Promise<string> {
+    return (await this.engine.process({
+      value: content,
+      data: data || {},
+      path: filename,
+    })).toString();
   }
 
-  renderSync(content: string): string {
-    return this.engine.processSync(content).toString();
+  renderSync(content: string, data?: Data, filename?: string): string {
+    return this.engine.processSync({
+      value: content,
+      data: data || {},
+      path: filename,
+    }).toString();
   }
 
   addHelper() {}
@@ -114,12 +126,29 @@ export default function (userOptions?: Partial<Options>) {
     site.filter("md", filter as Helper);
     site.filter("mdAsync", filterAsync as Helper, true);
 
-    async function filterAsync(string: string): Promise<string> {
-      return (await remarkEngine.render(string)).trim();
+    async function filterAsync(content: string | Data): Promise<string | Data> {
+      if (typeof content === "string") {
+        return (await remarkEngine.render(content)).trim();
+      } else {
+        const processed =
+          (await remarkEngine.render(content.content as string, content))
+            .trim();
+        content.content = processed;
+        return content;
+      }
     }
 
-    function filter(string: string): string {
-      return remarkEngine.renderSync(string).trim();
+    function filter(content: string | Data): string | Data {
+      if (typeof content === "string") {
+        return remarkEngine.renderSync(content).trim();
+      } else {
+        const processed = remarkEngine.renderSync(
+          content.content as string,
+          content,
+        ).trim();
+        content.content = processed;
+        return content;
+      }
     }
   };
 }
