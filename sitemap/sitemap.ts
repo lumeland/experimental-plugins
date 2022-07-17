@@ -1,44 +1,27 @@
 import { merge } from "lume/core/utils.ts";
 import { Page } from "lume/core/filesystem.ts";
-import { buildFilter, buildSort } from "lume/plugins/search.ts";
+import { buildSort } from "lume/plugins/search.ts";
 
 import type { Site } from "lume/core.ts";
+import type { Search } from "lume/plugins/search.ts";
 
 export interface Options {
-  /** The filters to search pages included in the sitemap */
-  filters: string[];
+  /** The query to search pages included in the sitemap */
+  query: string[];
 
   /** The values to sort the sitemap */
   sort: string[];
-
-  /** The default filters including the index page (only if custom `filters` are defined) */
-  defaultFilters: string[];
-
-  /** Set `true` append your filters to the defaults (only if custom `filters` are defined) */
-  keepDefaultFilters: boolean;
 }
 
 // Default options
 export const defaults: Options = {
-  filters: [],
+  query: [],
   sort: ["url=asc"],
-  defaultFilters: ["url=/"],
-  keepDefaultFilters: true,
 };
-
-type SitemapPages = Array<{
-  url: string;
-  date: string | undefined;
-}>;
 
 /** A plugin to generate a sitemap.xml from page files after build */
 export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
-
-  // If custom `filters` is defined, concatenate with `defaultFilters` (Index page)
-  if (options.keepDefaultFilters && userOptions?.filters?.length) {
-    options.filters = defaults.defaultFilters.concat(userOptions.filters);
-  }
 
   return (site: Site) => {
     site.addEventListener("afterRender", () => {
@@ -50,29 +33,20 @@ export default function (userOptions?: Partial<Options>) {
     });
 
     function getSitemapContent(site: Site) {
-      const sitemapPages: Page[] = [];
+      // Get the search instance from the global data
+      const search = site.globalData.search as Search;
+      const sitemapPages = search.pages(options.query, options.sort);
 
-      if (Array.isArray(options.filters) && options?.filters?.length) {
-        options.filters.forEach((filter) => {
-          site.pages.filter(buildFilter(filter)).map((page: Page) => {
-            sitemapPages.push(page);
-          });
-        });
-      } else {
-        site.pages.forEach((page: Page) => {
-          sitemapPages.push(page);
-        });
-      }
-
+      // Sort the pages
       sitemapPages.sort(buildSort(options.sort));
 
       // deno-fmt-ignore
       const sitemap = `
 <?xml version="1.0" encoding="utf-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  ${sitemapPages.map((page) => {
+  ${sitemapPages.map((page: Page) => {
     return `<url>
-    <loc>${`${site.options.location.origin}${page.data.url as string}`}</loc>
+    <loc>${site.url(page.data.url as string, true)}</loc>
     <lastmod>${page?.data?.date?.toISOString().slice(0, 10) as string}</lastmod>
   </url>
   `}).join("").trim()}
