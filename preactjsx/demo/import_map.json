@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "lume/": "https://deno.land/x/lume@v1.10.1/",
+    "preact/jsx-runtime": "https://esm.sh/preact@10.10.0/jsx-runtime",
+    "preact/jsx-dev-runtime": "https://esm.sh/preact@10.10.0/jsx-dev-runtime"
+  }
+}
