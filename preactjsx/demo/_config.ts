@@ -1,9 +1,9 @@
 import lume from "lume/mod.ts";
-import preact from "../mod.ts";
+import preactjsx from "../mod.ts";
 
 const site = lume();
 
 site
-  .use(preact());
+  .use(preactjsx());
 
 export default site;

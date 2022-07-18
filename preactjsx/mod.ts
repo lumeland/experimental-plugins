@@ -1,4 +1,4 @@
-import { preact, renderToString } from "./deps.ts";
+import { h, isValidElement, renderToString } from "./deps.ts";
 import loader from "lume/core/loaders/module.ts";
 import { merge } from "lume/core/utils.ts";
 
@@ -17,8 +17,6 @@ export const defaults: Options = {
   extensions: [".jsx", ".tsx"],
 };
 
-window.preact ||= preact;
-
 /** Template engine to render JSX files using Preact */
 export class PreactJsxEngine implements Engine {
   helpers: Record<string, Helper> = {};
@@ -27,13 +25,13 @@ export class PreactJsxEngine implements Engine {
 
   async render(content: unknown, data: Data = {}) {
     if (!data.children && data.content) {
-      data.children = preact.h("div", {
+      data.children = h("div", {
         dangerouslySetInnerHTML: { __html: data.content as string },
       });
     }
 
     const element =
-      typeof content === "object" && preact.isValidElement(content)
+      typeof content === "object" && isValidElement(content)
         ? content
         : (typeof content === "function"
           ? await content(data, this.helpers)
