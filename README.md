@@ -11,6 +11,9 @@ processor.
 ## NanoJSX
 To use [Nano JSX](https://nanojsx.io/) to render JSX pages.
 
+## Preact JSX
+To use [Preact](https://preactjs.com/) to render JSX pages.
+
 ## i18n
 
 To use [i18next](https://www.i18next.com/) library for translations.
