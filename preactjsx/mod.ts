@@ -30,12 +30,11 @@ export class PreactJsxEngine implements Engine {
       });
     }
 
-    const element =
-      typeof content === "object" && isValidElement(content)
-        ? content
-        : (typeof content === "function"
-          ? await content(data, this.helpers)
-          : content) as preact.VNode;
+    const element = typeof content === "object" && isValidElement(content)
+      ? content
+      : (typeof content === "function"
+        ? await content(data, this.helpers)
+        : content) as preact.VNode;
 
     data.children = element;
 
