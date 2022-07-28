@@ -2,6 +2,14 @@
 
 A repo to test and experiment with plugins for Lume
 
+## Multilanguage
+
+A plugin to create multiple language versions of the same page and include the
+`<link rel="alternate" hreflang="{lang}" href="{url}" />`.
+
+(*) This plugin requires the latest development version of Lume, it doesn't work
+with the stable version.
+
 ## Remark
 
 Use [Remark](https://github.com/remarkjs/remark) and
@@ -9,9 +17,11 @@ Use [Remark](https://github.com/remarkjs/remark) and
 processor.
 
 ## NanoJSX
+
 To use [Nano JSX](https://nanojsx.io/) to render JSX pages.
 
 ## Preact JSX
+
 To use [Preact](https://preactjs.com/) to render JSX pages.
 
 ## i18n
@@ -50,4 +60,4 @@ Middleware to implement a Basic Authentication
 To generate a sitemap.xml from html files after build.
 
 - Maybe needs to be tested with various URL plugins enabled (I used it with
-`slugify_urls` enabled)
+  `slugify_urls` enabled)
