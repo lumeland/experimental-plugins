@@ -6,16 +6,14 @@ import type { Page, Site } from "lume/core.ts";
 
 export interface Options {
   /** The list of extensions this plugin applies to. */
-  extensions: string[];
-  /** If enabled, HTML files will be minified. */
-  minifyHTML: boolean;
+  extensions: Array<".html" | ".css" | ".js">;
   /**
    * Default options for minify-html library
    * Opened an issue with a request of adding an export for the options type definitions so we can use `minifyOptions: Partial<CFG>`.
    * https://github.com/wilsonzlin/minify-html/issues/97
    * until then we define them manually.
    */
-  minifyOptions: {
+  options: {
     /** Do not minify DOCTYPEs. Minified DOCTYPEs may not be spec compliant. */
     do_not_minify_doctype?: boolean;
     /** Ensure all unquoted attribute values in the output do not contain any characters prohibited by the WHATWG specification. */
@@ -41,9 +39,8 @@ export interface Options {
 
 // Default options
 export const defaults: Options = {
-  extensions: [".html"],
-  minifyHTML: true,
-  minifyOptions: {
+  extensions: [".html", ".css", ".js"],
+  options: {
     do_not_minify_doctype: false,
     ensure_spec_compliant_unquoted_attribute_values: false,
     keep_closing_tags: false,
@@ -60,24 +57,26 @@ export const defaults: Options = {
 // Init minify-html
 await init();
 
-/** A plugin to minify HTML, CSS & JavaScript files in Lume */
+/** A plugin to minify HTML, CSS & JavaScript files */
 export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
 
-  const { minifyOptions } = options;
+  const { extensions } = options;
 
-  if (!options.minifyHTML) {
-    options.extensions = options.extensions.filter((ext: string) =>
-      ext !== ".html"
-    );
+  // Validate supported file extensions
+  if (extensions.some((ext) => ![".html", ".css", ".js"].includes(ext))) {
+    throw new Exception("Unsupported extensions configuration.", {
+      name: "Plugin minify-html",
+      extensions,
+    });
   }
 
-  if (minifyOptions.minify_js && !options.extensions.includes(".js")) {
-    options.extensions = options.extensions.concat([".js"]);
-  }
+  // When `extensions` includes `.css` and `.js`, minify-html will minify CSS and JavaScript files, even when `minify_css` and `minify_js` defaults set to `false`, since lume passes them to process
+  // To make this work with inline `<style>` tags in HTML files, following is necessary when `minify_css` is not set to `true`
+  const minifyOptions = { ...options.options };
 
-  if (minifyOptions.minify_css && !options.extensions.includes(".css")) {
-    options.extensions = options.extensions.concat([".css"]);
+  if (extensions.includes(".css")) {
+    minifyOptions.minify_css = true;
   }
 
   return (site: Site) => {
@@ -86,24 +85,13 @@ export default function (userOptions?: Partial<Options>) {
 
     function minify(page: Page) {
       const content = page.content as string;
-      const language = page.dest.ext.slice(1);
 
-      switch (language) {
-        case "html":
-        case "js":
-        case "css": {
-          const encoder = new TextEncoder();
-          const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
 
-          page.content = decoder.decode(
-            minifyHTML(encoder.encode(content), options.minifyOptions),
-          );
-          return;
-        }
-
-        default:
-          throw new Exception("Unsupported file type", { page });
-      }
+      page.content = decoder.decode(
+        minifyHTML(encoder.encode(content), minifyOptions),
+      );
     }
   };
 }

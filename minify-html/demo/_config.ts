@@ -5,13 +5,11 @@ const site = lume();
 
 site
   .use(minifyHTML({
-    minifyHTML: true,
-    minifyOptions: {
+    extensions: [".html", ".css", ".js"],
+    options: {
       do_not_minify_doctype: true,
       ensure_spec_compliant_unquoted_attribute_values: true,
-      keep_spaces_between_attributes: true,
-      minify_css: true,
-      minify_js: true,
+      keep_spaces_between_attributes: true
     },
   }));
 

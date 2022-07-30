@@ -22,15 +22,6 @@ export default site;
 The `minify-html` plugin minifies HTML, CSS & JavaScript files using
 [minify-html](https://github.com/wilsonzlin/minify-html).
 
-By default minification of `.html` files is enabled and all `minifyOptions` are
-set to `false`. You can override this by passing an `minifyOptions` object with
-the minify-html options. To enable minification for CSS or JavaScript files, the
-`minify_css` and `minify_js` flags just need to be set to `true`. There is no
-need to add additional extensions to the `extensions` option.
-
-To enable minification of inline `<style>` tags, both HTML and CSS needs to be
-enabled.
-
 ### Note
 
 [minify-html](https://github.com/wilsonzlin/minify-html) uses
@@ -44,14 +35,21 @@ does not fit your requirements, use the Lume
 This plugin accepts a configuration object. The available options are:
 
 - `extensions`: Array with the extensions of the files that this plugin will
-  load. By default is `[".html"]`.
-- `minifyHTML`: Enable HTML minification. By default is `true`.
-- `minifyOptions`: The options passed to minify-html. If any are not set, by
-  default is `false`. See the
+  load. By default is `[".html", ".css", ".js"]`.
+- `options`: The options passed to minify-html. If any are not set, by default
+  is `false`. See the
   [minify-html cfg fields](https://docs.rs/minify-html/latest/minify_html/struct.Cfg.html)
   for available config options.
 
-## Usage
+By default minification of `.html`, `.css` and `.js` files is enabled, all
+`options` are set to `false`. You can override this by passing an `options`
+object with the minify-html options.
+
+To disable minification of CSS or JavaScript files, remove `.css` or `.js` from
+`extensions`.
+
+To enable minification of inline `<style>` tags in HTML files, when `.css` is
+removed from `extensions`, `options.minify_css` needs to be set to `true`.
 
 ### Example with the default configuration:
 
