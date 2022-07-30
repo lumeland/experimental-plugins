@@ -60,7 +60,7 @@ import minifyHTML from "lume/plugins/minify_html.ts";
 const site = lume();
 
 site.use(minifyHTML({
-  extensions: [".html"],
+  extensions: [".html", ".css", ".js"],
   minifyHTML: true,
   minifyOptions: {
     do_not_minify_doctype: false,
