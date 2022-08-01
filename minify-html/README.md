@@ -35,21 +35,17 @@ does not fit your requirements, use the Lume
 This plugin accepts a configuration object. The available options are:
 
 - `extensions`: Array with the extensions of the files that this plugin will
-  load. By default is `[".html", ".css", ".js"]`.
-- `options`: The options passed to minify-html. If any are not set, by default
-  is `false`. See the
+  load. By default is `[".html"]`.
+- `options`: The options passed to minify-html. By default is `false`, but
+  `minify_js` & `minify_css` set to `true`. See the
   [minify-html cfg fields](https://docs.rs/minify-html/latest/minify_html/struct.Cfg.html)
   for available config options.
 
-By default minification of `.html`, `.css` and `.js` files is enabled, all
-`options` are set to `false`. You can override this by passing an `options`
-object with the minify-html options.
-
-To disable minification of CSS or JavaScript files, remove `.css` or `.js` from
-`extensions`.
-
-To enable minification of inline `<style>` tags in HTML files, when `.css` is
-removed from `extensions`, `options.minify_css` needs to be set to `true`.
+By default only minification of `.html` files is enabled. To support
+minification of inline CSS and JavaScript out of the box, `options.minify_js`
+and `options.minify_css` is set to `true`. All other `options` are set to
+`false`. You can override this by passing an `options` object with the
+minify-html options.
 
 ### Example with the default configuration:
 
@@ -60,17 +56,16 @@ import minifyHTML from "lume/plugins/minify_html.ts";
 const site = lume();
 
 site.use(minifyHTML({
-  extensions: [".html", ".css", ".js"],
-  minifyHTML: true,
-  minifyOptions: {
+  extensions: [".html"],
+  options: {
     do_not_minify_doctype: false,
     ensure_spec_compliant_unquoted_attribute_values: false,
     keep_closing_tags: false,
     keep_html_and_head_opening_tags: false,
     keep_spaces_between_attributes: false,
     keep_comments: false,
-    minify_js: false,
-    minify_css: false,
+    minify_js: true,
+    minify_css: true,
     remove_bangs: false,
     remove_processing_instructions: false,
   },

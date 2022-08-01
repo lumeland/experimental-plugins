@@ -17,8 +17,9 @@
   <body>
     <h1>Minify demo</h1>
     <p>
-    This is a demo of the Minify processor.
-  </p>
+      This is a demo of the Minify processor.
+    </p>
+    <p id="inline-js-test"></div>
     <div class="counter">
       <h4>Counter: <span id="count">0</span></h4>
       <div class="counter-buttons">
@@ -26,6 +27,10 @@
         <button id="decrement">Decrement</button>
       </div>
     </div>
+    <script>
+      const appDiv = document.getElementById('inline-js-test');
+      appDiv.innerHTML = "Hello from inline-js";
+    </script>
     <script type="module" src="/js/main.js"></script>
   </body>
 </html>

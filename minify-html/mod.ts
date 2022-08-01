@@ -39,7 +39,7 @@ export interface Options {
 
 // Default options
 export const defaults: Options = {
-  extensions: [".html", ".css", ".js"],
+  extensions: [".html"],
   options: {
     do_not_minify_doctype: false,
     ensure_spec_compliant_unquoted_attribute_values: false,
@@ -47,8 +47,8 @@ export const defaults: Options = {
     keep_html_and_head_opening_tags: false,
     keep_spaces_between_attributes: false,
     keep_comments: false,
-    minify_js: false,
-    minify_css: false,
+    minify_js: true,
+    minify_css: true,
     remove_bangs: false,
     remove_processing_instructions: false,
   },
@@ -71,14 +71,6 @@ export default function (userOptions?: Partial<Options>) {
     });
   }
 
-  // When `extensions` includes `.css` and `.js`, minify-html will minify CSS and JavaScript files, even when `minify_css` and `minify_js` defaults set to `false`, since lume passes them to process
-  // To make this work with inline `<style>` tags in HTML files, following is necessary when `minify_css` is not set to `true`
-  const minifyOptions = { ...options.options };
-
-  if (extensions.includes(".css")) {
-    minifyOptions.minify_css = true;
-  }
-
   return (site: Site) => {
     site.loadAssets(options.extensions);
     site.process(options.extensions, minify);
@@ -90,7 +82,7 @@ export default function (userOptions?: Partial<Options>) {
       const decoder = new TextDecoder();
 
       page.content = decoder.decode(
-        minifyHTML(encoder.encode(content), minifyOptions),
+        minifyHTML(encoder.encode(content), options.options),
       );
     }
   };
