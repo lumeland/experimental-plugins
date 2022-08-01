@@ -41,6 +41,15 @@ Minify HTML, CSS, JS and JSON files using
   Lume.
 - To minify CSS, it's recommended to use the plugin ParcelCSS, already provided
   by Lume.
+  
+## Minify-HTML
+
+Minify HTML, CSS and JS using [minify-html](https://github.com/wilsonzlin/minify-html).
+
+- To minify JS, it's recommended to use the plugin Terser, already provided by
+  Lume.
+- To minify CSS, it's recommended to use the plugin ParcelCSS, already provided
+  by Lume.
 
 ## Jimp
 
