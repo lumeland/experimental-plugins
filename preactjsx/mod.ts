@@ -3,6 +3,7 @@ import loader from "lume/core/loaders/module.ts";
 import { merge } from "lume/core/utils.ts";
 
 import type { Data, Engine, Helper, Site } from "lume/core.ts";
+import type { ComponentChildren } from "./deps.ts";
 
 export interface Options {
   /** The list of extensions this plugin applies to */
@@ -16,6 +17,9 @@ export interface Options {
 export const defaults: Options = {
   extensions: [".jsx", ".tsx"],
 };
+
+// JSX children type
+export type Children = ComponentChildren;
 
 /** Template engine to render JSX files using Preact */
 export class PreactJsxEngine implements Engine {
