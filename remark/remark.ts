@@ -54,7 +54,7 @@ export class MarkdownEngine implements Engine {
   ): Promise<string> {
     return (await this.engine.process({
       value: content,
-      data: data || {},
+      data: data.page.data || {},
       path: filename,
     })).toString();
   }
@@ -62,7 +62,7 @@ export class MarkdownEngine implements Engine {
   renderSync(content: string, data?: Data, filename?: string): string {
     return this.engine.processSync({
       value: content,
-      data: data || {},
+      data: data.page.data || {},
       path: filename,
     }).toString();
   }
