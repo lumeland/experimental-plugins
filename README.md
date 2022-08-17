@@ -2,13 +2,53 @@
 
 A repo to test and experiment with plugins for Lume
 
+## Relations
+
+Plugin to create automatically relations between different pages and use them in
+your layouts. For example:
+
+```yml
+# /authors/oscar-otero.md
+---
+title: Oscar Otero
+type: author
+id: 1
+---
+Hello, I'm Oscar
+```
+
+```yml
+# /articles/working-with-lume.md
+---
+title: Working with Lume
+type: article
+id: 23
+author_id: 1
+---
+This is an article from Oscar
+```
+
+```njk
+<header>
+  <h1>{{ title }}</h1>
+  <p>Created by {{ author.name }}</p>
+</header>
+```
+
 ## Multilanguage
 
 A plugin to create multiple language versions of the same page and include the
-`<link rel="alternate" hreflang="{lang}" href="{url}" />`.
+`<link rel="alternate" hreflang="{lang}" href="{url}" />`. Example of
+multilanguage page:
 
-(*) This plugin requires the latest development version of Lume, it doesn't work
-with the stable version.
+```yml
+---
+lang: [en, gl]
+
+title: This is the default title for all languages
+title.gl: Este é o título específico en galego
+---
+```
 
 ## Remark
 
