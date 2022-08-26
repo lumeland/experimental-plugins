@@ -2,13 +2,12 @@ import { Page } from "lume/core/filesystem.ts";
 import { isPlainObject } from "lume/core/utils.ts";
 
 import type { Data, Plugin } from "lume/core.ts";
-import type { PaginateResult } from "lume/plugins/paginate.ts";
 
 type Alternates = Record<string, Page>;
 
 export default function multilanguage(): Plugin {
   return (site) => {
-    site.data("paginateLanguages", paginateLanguages);
+    site.data("mergeLanguages", mergeLanguages);
     site.preprocess("*", (page, pages) => {
       const lang = page.data.lang as string | string[] | undefined;
 
@@ -108,33 +107,30 @@ export default function multilanguage(): Plugin {
  * })
  * ```
  */
-function* paginateLanguages<T>(
-  pages: Record<string, Generator<PaginateResult<T>, void, unknown>>,
-): Generator<Omit<PaginateResult<T>, "url">, void, unknown> {
-  const entries = Object.entries(pages);
-  const primary = entries.shift();
+function mergeLanguages(
+  pages: Record<string, Record<string, unknown>[]>,
+): unknown[] {
+  const result: unknown[] = [];
+  const limit = Math.max(...Object.values(pages).map((v) => v.length));
+  let index = 0;
 
-  if (!primary) {
-    return;
-  }
+  while (index < limit) {
+    const page: Record<string, unknown> = {};
 
-  for (const entry of primary[1]) {
-    const data = entry as Omit<PaginateResult<T>, "url">;
-    data[`url.${primary[0]}`] = data.url;
-    delete data.url;
+    for (const [lang, pageResults] of Object.entries(pages)) {
+      const pageResult = pageResults[index];
 
-    for (const [lang, pageLang] of entries) {
-      const page = pageLang.next().value;
-
-      if (page) {
-        for (const [key, value] of Object.entries(page)) {
-          data[`${key}.${lang}`] = value;
+      if (pageResult) {
+        for (const [key, value] of Object.entries(pageResult)) {
+          page[`${key}.${lang}`] = value;
         }
       }
     }
-
-    yield data;
+    result.push(page);
+    index++;
   }
+
+  return result;
 }
 
 /**
