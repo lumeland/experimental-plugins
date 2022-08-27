@@ -1,4 +1,3 @@
-import { extname, resolve } from "lume/deps/path.ts";
 import { merge } from "lume/core/utils.ts";
 import { Page } from "lume/core/filesystem.ts";
 import { CSSParser, HTMLParser, Processor, StyleSheet } from "./deps.ts";
@@ -7,56 +6,37 @@ import type { Element, HTMLDocument } from "lume/deps/dom.ts";
 import type { Site } from "lume/core.ts";
 
 export interface Options {
+  /** Whether minify the css code or not */
   minify: boolean;
+
+  /**
+   * Operating mode for Windi CSS.
+   * @see https://windicss.org/posts/modes.html
+   */
   mode: "interpret" | "compile";
-  output: {
-    // ouput mode "file" = single file for all generated styles
-    // output mode "styleTag" = <style> tags inserted per-page
-    mode: "file" | "styleTag";
-    filename?: string;
-  };
-  // https://github.com/windicss/windicss/blob/main/src/interfaces.ts#L367
-  // https://windicss.org/guide/configuration.html
+
+  /**
+   * Set the css filename for all generated styles
+   * Set false to insert a <style> tag per page
+   */
+  cssFile: string | false;
+
+  /**
+   * Configurations for the Windi CSS processor
+   * @see https://windicss.org/guide/configuration.html
+   */
   config: Record<string, unknown>;
-  // transpile .windi.css files to .css files
-  // or merge .windi.css styles with main windi output
-  // (https://windicss.org/posts/language.html)
-  // note: must be called BEFORE postcss prior to lume v2.0.0
-  windiLangFiles: "merge" | "transpile" | "ignore";
 }
 
 const defaults: Options = {
   minify: false,
   mode: "interpret",
-  output: {
-    mode: "file",
-    filename: "/windi.css",
-  },
+  cssFile: "/windi.css",
   config: {},
-  windiLangFiles: "transpile",
-};
-
-const recurseDir = async (
-  path: string,
-  { ignore = [/^\./], extensions = [] as string[] } = {},
-) => {
-  const files: string[] = [];
-  for await (const entry of Deno.readDir(path)) {
-    if (ignore.some((pattern) => entry.name.match(pattern))) continue;
-    const name = resolve(path, entry.name);
-    if (entry.isFile) {
-      const ext = extensions.some((ext) => entry.name.endsWith(ext));
-      if (extensions.length && !ext) continue;
-      files.push(name);
-    } else if (entry.isDirectory) {
-      files.push(...(await recurseDir(name, { ignore, extensions })));
-    }
-  }
-  return files;
 };
 
 /**
- * a lume plugin for windicss, the next generation utility-first css framework
+ * A lume plugin for windicss, the next generation utility-first css framework
  *
  * classnames from all built pages will be read/extracted
  * and only the necessary css will be generated
@@ -68,40 +48,41 @@ export default function (userOptions: Partial<Options> = {}) {
   const options = merge(defaults, userOptions) as Options;
 
   return (site: Site) => {
-    // create & configure a windicss instance
-    // (config assignment merges provided with defaults)
+    // Create & configure a windicss instance
     const processor = new Processor();
     options.config = processor.loadConfig(options.config);
 
-    if (options.windiLangFiles === "transpile") {
-      site.loadAssets([".windi.css"]);
-      site.process([".windi.css"], (page) => {
-        const parser = new CSSParser(page.content as string, processor),
-          stylesheet = parser.parse();
-        page.content = stylesheet.build(options.minify);
-        page.dest.ext = ".css";
-      });
-    }
+    // Load and process all .windi.css files
+    site.loadAssets([".windi.css"]);
+    site.process([".windi.css"], (page) => {
+      const parser = new CSSParser(page.content as string, processor);
 
-    site.addEventListener("afterRender", async () => {
-      let stylesheet = new StyleSheet();
+      page.content = parser.parse().build(options.minify);
+      page.updateDest({ ext: ".css" });
+    });
 
-      if (options.windiLangFiles === "merge") {
-        const files = await recurseDir(site.src("/"), {
-          extensions: [".windi.css"],
-        });
-        for (const file of files) {
-          const content = await Deno.readTextFile(file),
-            windilang = new CSSParser(content, processor).parse();
-          stylesheet = stylesheet.extend(windilang);
+    // Process html files
+    const { cssFile } = options;
+
+    if (cssFile === false) {
+      // Insert a <style> tag for each page
+      site.process([".html"], (page) => {
+        const scopedsheet = windi(page, processor, options).sort().combine();
+        const style = page.document?.createElement("style");
+        if (style) {
+          style.innerText = scopedsheet.build(options.minify);
+          page.document?.head?.appendChild(style);
         }
-      }
+      });
+    } else {
+      // Generate the stylesheets for all pages
+      site.addEventListener("afterRender", () => {
+        let stylesheet = new StyleSheet();
 
-      const pages = site.pages
-        .filter((page) => page.dest.ext === ".html");
+        const pages = site.pages
+          .filter((page) => page.dest.ext === ".html");
 
-      if (options.output.mode === "file" && options.output.filename) {
-        // create & merge stylesheets for all pages
+        // Create & merge stylesheets for all pages
         stylesheet = pages
           .map((page) => windi(page, processor, options))
           .reduce(
@@ -110,33 +91,40 @@ export default function (userOptions: Partial<Options> = {}) {
           ).sort().combine();
 
         // output css as a page
-        const ext = extname(options.output.filename),
-          path = options.output.filename.slice(0, -ext.length),
-          page = new Page({ path, ext });
-        page.content = stylesheet.build(options.minify);
-        site.pages.push(page);
-      } else if (options.output.mode === "styleTag") {
-        // insert stylesheets directly into pages
-        for (const page of pages) {
-          const scopedsheet = windi(page, processor, options)
-            .extend(stylesheet).sort().combine();
-          page.content += `<style>${scopedsheet.build(options.minify)}</style>`;
+        const exists = site.pages.find((page) => page.data.url === cssFile);
+
+        if (exists) {
+          exists.content = `${exists.content}\n${
+            stylesheet.build(options.minify)
+          }`;
+        } else {
+          site.pages.push(
+            Page.create(cssFile, stylesheet.build(options.minify)),
+          );
         }
-      }
-    });
+      });
+    }
   };
 }
 
+/**
+ * Run windicss on a HTML page
+ */
 export function windi(page: Page, processor: Processor, options: Options) {
-  const content = page.content as string,
-    parser = new HTMLParser(content);
+  const content = page.content as string;
+  const parser = new HTMLParser(content);
 
-  // update page content with classnames output from windi
+  // Update page content with classnames output from windi
   // e.g. to expand variant:(class groups) and to support compile mode
-  let stylesheet = new StyleSheet(), html = "", index = 0;
+  let stylesheet = new StyleSheet();
+  let html = "";
+  let index = 0;
+
   for (const className of parser.parseClasses()) {
     html += content.substring(index, className.start);
     index = className.end;
+
+    // Interpret or compile the classname
     if (options.mode === "interpret") {
       const interpreted = processor.interpret(className.result);
       html += [...interpreted.success, ...interpreted.ignored].join(" ");
@@ -150,10 +138,11 @@ export function windi(page: Page, processor: Processor, options: Options) {
       stylesheet = stylesheet.extend(compiled.styleSheet);
     }
   }
+
   page.content = html + content.substring(index);
 
-  // attributify: https://windicss.org/features/attributify.html
-  // reduceRight taken from https://github.com/windicss/windicss/blob/main/src/cli/index.ts
+  // Attributify: https://windicss.org/features/attributify.html
+  // Taken from https://github.com/windicss/windicss/blob/cf3067b9272704adab30d568bdaa5f64bd44b7b5/src/cli/index.ts#L188
   if (options.config.attributify) {
     const attrs: { [key: string]: string | string[] } = parser
       .parseAttrs()
@@ -176,7 +165,7 @@ export function windi(page: Page, processor: Processor, options: Options) {
     stylesheet = stylesheet.extend(attributified.styleSheet);
   }
 
-  // style blocks: use @apply etc. in a style tag
+  // Style blocks: use @apply etc. in a style tag
   // will always replace the inline style block with the generated styles
   // https://windicss.org/features/directives.html
   // https://windicss.org/posts/language.html
