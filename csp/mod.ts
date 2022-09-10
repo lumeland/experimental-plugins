@@ -280,7 +280,7 @@ function getExpectCt(options: Readonly<ExpectCtOptions>): string {
     headerValue.push("enforce");
   }
 
-  if (options["enforce"]) {
+  if (options["report-uri"]) {
     headerValue.push(`report-uri="${options["report-uri"]}"`);
   }
 
