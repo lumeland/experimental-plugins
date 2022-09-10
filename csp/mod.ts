@@ -20,6 +20,9 @@ export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
 
+  /** MIME sniffing vulnerabilities protection */
+  "X-Content-Type-Options"?: boolean;
+
   /**  Cross-site scripting (XSS) filter */
   "X-XSS-Protection"?: boolean;
 
@@ -36,6 +39,7 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "X-Content-Type-Options": true,
   "X-XSS-Protection": true,
   "X-Permitted-Cross-Domain-Policies": true,
   "X-Powered-By": "Fake Server",
@@ -55,6 +59,10 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (options["X-Content-Type-Options"]) {
+      headers.set("X-Content-Type-Options", "nosniff");
     }
 
     if (options["X-XSS-Protection"]) {
