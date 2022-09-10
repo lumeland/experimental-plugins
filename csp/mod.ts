@@ -9,6 +9,39 @@ type StrictTransportSecurityOptions = {
   "preload"?: boolean;
 };
 
+type ContentSecurityPolicyDirectives =
+  | "child-src"
+  | "connect-src"
+  | "default-src"
+  | "font-src"
+  | "frame-src"
+  | "img-src"
+  | "manifest-src"
+  | "media-src"
+  | "object-src"
+  | "prefetch-src"
+  | "script-src"
+  | "script-src-elem"
+  | "script-src-attr"
+  | "style-src"
+  | "style-src-elem"
+  | "style-src-attr"
+  | "worker-src"
+  | "base-uri"
+  | "plugin-types"
+  | "sandbox"
+  | "form-action"
+  | "frame-ancestors"
+  | "navigate-to"
+  | "report-uri"
+  | "report-to"
+  | "block-all-mixed-content"
+  | "referrer"
+  | "require-sri-for"
+  | "require-trusted-types-for"
+  | "trusted-types"
+  | "upgrade-insecure-requests";
+
 type ReferrerPolicyOptions =
   | ""
   | "no-referrer"
@@ -38,6 +71,11 @@ type XPermittedCrossDomainPoliciesOptions =
 export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
+
+  /** Allows to restrict resources that the web browser loads */
+  "Content-Security-Policy"?: Partial<
+    Record<ContentSecurityPolicyDirectives, string[]>
+  >;
 
   /** Controls how much referrer information should be included with requests */
   "Referrer-Policy"?: ReferrerPolicyOptions | ReferrerPolicyOptions[];
@@ -70,6 +108,13 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "Content-Security-Policy": {
+    "default-src": ["'none'"],
+    "script-src": ["cdn.jsdelivr.net", "'self'"],
+    "style-src": ["cdn.jsdelivr.net", "'self'"],
+    "font-src": ["'self'"],
+    "img-src": ["shield.deno.dev", "'self'"],
+  },
   "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Expect-CT": {
@@ -98,6 +143,17 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (options["Content-Security-Policy"]) {
+      const contentSecurityPolicy = getContentSecurityPolicy(
+        options["Content-Security-Policy"],
+      );
+
+      headers.set(
+        "Content-Security-Policy",
+        contentSecurityPolicy,
+      );
     }
 
     if (options["Referrer-Policy"]) {
@@ -207,4 +263,26 @@ function getExpectCt(options: Readonly<ExpectCtOptions>): string {
   }
 
   return headerValue.join(", ");
+}
+
+function getContentSecurityPolicy(
+  options: Readonly<
+    Partial<
+      Record<ContentSecurityPolicyDirectives, string[]>
+    >
+  >,
+): string {
+  const headerValue = Object
+    .keys(options)
+    .reduce((acc: string[], name: string) => {
+      const policy = options[name as keyof typeof options];
+      if (Array.isArray(policy) && policy.length > 0) {
+        acc.push(`${name} ${policy.join ? policy.join(" ") : policy}; `);
+      }
+      return acc;
+    }, [])
+    .join("")
+    .slice(0, -2);
+
+  return headerValue;
 }
