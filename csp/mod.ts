@@ -42,6 +42,9 @@ export interface Options {
   /** Controls how much referrer information should be included with requests */
   "Referrer-Policy"?: ReferrerPolicyOptions | ReferrerPolicyOptions[];
 
+  /** Specifies which features of the web browser should be permitted to function */
+  "Permissions-Policy"?: string;
+
   /** Prevents the use of misissued certificates */
   "Expect-CT"?: ExpectCtOptions;
 
@@ -68,6 +71,7 @@ export const defaults: Options = {
     "preload": true,
   },
   "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Expect-CT": {
     "max-age": DEFAULT_MAX_AGE,
     "enforce": true,
@@ -100,6 +104,10 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       const referrerPolicy = getReferrerPolicy(options["Referrer-Policy"]);
 
       headers.set("Referrer-Policy", referrerPolicy!);
+    }
+
+    if (typeof options["Permissions-Policy"] === "string") {
+      headers.set("Permissions-Policy", options["Permissions-Policy"]);
     }
 
     if (options["Expect-CT"]) {
