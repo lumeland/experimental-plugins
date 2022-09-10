@@ -237,6 +237,28 @@ function getStrictTransportSecurity(
   return headerValue.join("; ");
 }
 
+function getContentSecurityPolicy(
+  options: Readonly<
+    Partial<
+      Record<ContentSecurityPolicyDirectives, string[]>
+    >
+  >,
+): string {
+  const headerValue = Object
+    .keys(options)
+    .reduce((acc: string[], name: string) => {
+      const policy = options[name as keyof typeof options];
+      if (Array.isArray(policy) && policy.length > 0) {
+        acc.push(`${name} ${policy.join ? policy.join(" ") : policy}; `);
+      }
+      return acc;
+    }, [])
+    .join("")
+    .slice(0, -2);
+
+  return headerValue;
+}
+
 function getReferrerPolicy(
   options: Readonly<ReferrerPolicyOptions | ReferrerPolicyOptions[]>,
 ): string {
@@ -263,26 +285,4 @@ function getExpectCt(options: Readonly<ExpectCtOptions>): string {
   }
 
   return headerValue.join(", ");
-}
-
-function getContentSecurityPolicy(
-  options: Readonly<
-    Partial<
-      Record<ContentSecurityPolicyDirectives, string[]>
-    >
-  >,
-): string {
-  const headerValue = Object
-    .keys(options)
-    .reduce((acc: string[], name: string) => {
-      const policy = options[name as keyof typeof options];
-      if (Array.isArray(policy) && policy.length > 0) {
-        acc.push(`${name} ${policy.join ? policy.join(" ") : policy}; `);
-      }
-      return acc;
-    }, [])
-    .join("")
-    .slice(0, -2);
-
-  return headerValue;
 }
