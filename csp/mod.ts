@@ -117,7 +117,7 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
     }
 
     if (typeof options["X-Frame-Options"] === "string") {
-      headers.set("X-Frame-Options", options["X-Frame-Options"] as string);
+      headers.set("X-Frame-Options", options["X-Frame-Options"]);
     } else if (options["X-Frame-Options"] !== false) {
       headers.set("X-Frame-Options", "SAMEORIGIN");
     }
@@ -133,14 +133,14 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
     if (typeof options["X-Permitted-Cross-Domain-Policies"] === "string") {
       headers.set(
         "X-Permitted-Cross-Domain-Policies",
-        options["X-Permitted-Cross-Domain-Policies"] as string,
+        options["X-Permitted-Cross-Domain-Policies"],
       );
     } else if (options["X-Permitted-Cross-Domain-Policies"] !== false) {
       headers.set("X-Permitted-Cross-Domain-Policies", "none");
     }
 
     if (typeof options["X-Powered-By"] === "string") {
-      headers.set("X-Powered-By", options["X-Powered-By"] as string);
+      headers.set("X-Powered-By", options["X-Powered-By"]);
     } else if (options["X-Powered-By"] !== false) {
       headers.delete("X-Powered-By");
     }
