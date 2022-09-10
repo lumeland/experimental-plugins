@@ -9,9 +9,19 @@ type StrictTransportSecurityOptions = {
   "preload"?: boolean;
 };
 
+type XPermittedCrossDomainPoliciesOptions =
+  | "none"
+  | "master-only"
+  | "all"
+  | boolean
+  | string;
+
 export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
+
+  /** Restricts loading of Adobe Flash or PDF documents from other domains */
+  "X-Permitted-Cross-Domain-Policies"?: XPermittedCrossDomainPoliciesOptions;
 
   /** Leaks or fakes information about the server side technology */
   "X-Powered-By"?: boolean | string;
@@ -23,6 +33,7 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "X-Permitted-Cross-Domain-Policies": true,
   "X-Powered-By": "Fake Server",
 };
 
@@ -40,6 +51,15 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (typeof options["X-Permitted-Cross-Domain-Policies"] === "string") {
+      headers.set(
+        "X-Permitted-Cross-Domain-Policies",
+        options["X-Permitted-Cross-Domain-Policies"] as string,
+      );
+    } else if (options["X-Permitted-Cross-Domain-Policies"] !== false) {
+      headers.set("X-Permitted-Cross-Domain-Policies", "none");
     }
 
     if (typeof options["X-Powered-By"] === "string") {
