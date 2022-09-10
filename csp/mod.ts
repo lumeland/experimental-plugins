@@ -9,6 +9,17 @@ type StrictTransportSecurityOptions = {
   "preload"?: boolean;
 };
 
+type ReferrerPolicyOptions =
+  | ""
+  | "no-referrer"
+  | "no-referrer-when-downgrade"
+  | "unsafe-url"
+  | "same-origin"
+  | "strict-origin"
+  | "strict-origin-when-cross-origin"
+  | "origin"
+  | "origin-when-cross-origin";
+
 type XFrameOptions = "DENY" | "SAMEORIGIN" | boolean | string;
 
 type XPermittedCrossDomainPoliciesOptions =
@@ -21,6 +32,9 @@ type XPermittedCrossDomainPoliciesOptions =
 export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
+
+  /** Controls how much referrer information should be included with requests */
+  "Referrer-Policy"?: ReferrerPolicyOptions | ReferrerPolicyOptions[];
 
   /** Clickjacking protection */
   "X-Frame-Options"?: XFrameOptions;
@@ -44,6 +58,7 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
   "X-Frame-Options": true,
   "X-Content-Type-Options": true,
   "X-XSS-Protection": true,
@@ -65,6 +80,12 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (options["Referrer-Policy"]) {
+      const referrerPolicy = getReferrerPolicy(options["Referrer-Policy"]);
+
+      headers.set("Referrer-Policy", referrerPolicy!);
     }
 
     if (typeof options["X-Frame-Options"] === "string") {
@@ -130,4 +151,16 @@ function getStrictTransportSecurity(
   }
 
   return headerValue.join("; ");
+}
+
+function getReferrerPolicy(
+  options: Readonly<ReferrerPolicyOptions | ReferrerPolicyOptions[]>,
+): string {
+  const headerValue = typeof options === "string" ? [options] : options;
+
+  if (headerValue?.length === 0) {
+    throw new Error("CSP Middleware: Referrer-Policy is enabled but empty");
+  }
+
+  return headerValue.join(", ");
 }
