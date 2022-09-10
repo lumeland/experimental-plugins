@@ -20,6 +20,12 @@ type ReferrerPolicyOptions =
   | "origin"
   | "origin-when-cross-origin";
 
+type ExpectCtOptions = {
+  "max-age": number;
+  "enforce"?: boolean;
+  "report-uri"?: string;
+};
+
 type XFrameOptions = "DENY" | "SAMEORIGIN" | boolean | string;
 
 type XPermittedCrossDomainPoliciesOptions =
@@ -35,6 +41,9 @@ export interface Options {
 
   /** Controls how much referrer information should be included with requests */
   "Referrer-Policy"?: ReferrerPolicyOptions | ReferrerPolicyOptions[];
+
+  /** Prevents the use of misissued certificates */
+  "Expect-CT"?: ExpectCtOptions;
 
   /** Clickjacking protection */
   "X-Frame-Options"?: XFrameOptions;
@@ -59,6 +68,11 @@ export const defaults: Options = {
     "preload": true,
   },
   "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
+  "Expect-CT": {
+    "max-age": DEFAULT_MAX_AGE,
+    "enforce": true,
+    "report-uri": "https://localhost:8000/report/",
+  },
   "X-Frame-Options": true,
   "X-Content-Type-Options": true,
   "X-XSS-Protection": true,
@@ -86,6 +100,12 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       const referrerPolicy = getReferrerPolicy(options["Referrer-Policy"]);
 
       headers.set("Referrer-Policy", referrerPolicy!);
+    }
+
+    if (options["Expect-CT"]) {
+      const expectCt = getExpectCt(options["Expect-CT"]);
+
+      headers.set("Expect-CT", expectCt!);
     }
 
     if (typeof options["X-Frame-Options"] === "string") {
@@ -160,6 +180,22 @@ function getReferrerPolicy(
 
   if (headerValue?.length === 0) {
     throw new Error("CSP Middleware: Referrer-Policy is enabled but empty");
+  }
+
+  return headerValue.join(", ");
+}
+
+function getExpectCt(options: Readonly<ExpectCtOptions>): string {
+  const headerValue: string[] = [
+    `max-age=${validateMaxAge(options["max-age"])}`,
+  ];
+
+  if (options.enforce) {
+    headerValue.push("enforce");
+  }
+
+  if (options["enforce"]) {
+    headerValue.push(`report-uri="${options["report-uri"]}"`);
   }
 
   return headerValue.join(", ");
