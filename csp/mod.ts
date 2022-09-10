@@ -3,11 +3,11 @@ import { merge } from "lume/core/utils.ts";
 
 const DEFAULT_MAX_AGE = 365 * 86400;
 
-type StrictTransportSecurityOptions = {
-  "max-age": number;
-  "includeSubDomains"?: boolean;
-  "preload"?: boolean;
-};
+interface StrictTransportSecurityOptions {
+  maxAge: number;
+  includeSubDomains?: boolean;
+  preload?: boolean;
+}
 
 type ContentSecurityPolicyDirectives =
   | "child-src"
@@ -53,11 +53,11 @@ type ReferrerPolicyOptions =
   | "origin"
   | "origin-when-cross-origin";
 
-type ExpectCtOptions = {
-  "max-age": number;
-  "enforce"?: boolean;
-  "report-uri"?: string;
-};
+interface ExpectCtOptions {
+  maxAge: number;
+  enforce?: boolean;
+  reportUri?: string;
+}
 
 type XFrameOptions = "DENY" | "SAMEORIGIN" | boolean | string;
 
@@ -105,9 +105,9 @@ export interface Options {
 // All current default values are just for testing purpose with lume.land while dev
 export const defaults: Options = {
   "Strict-Transport-Security": {
-    "max-age": DEFAULT_MAX_AGE,
-    "includeSubDomains": true,
-    "preload": true,
+    maxAge: DEFAULT_MAX_AGE,
+    includeSubDomains: true,
+    preload: true,
   },
   "Content-Security-Policy": {
     "default-src": ["'none'"],
@@ -119,9 +119,9 @@ export const defaults: Options = {
   "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Expect-CT": {
-    "max-age": DEFAULT_MAX_AGE,
-    "enforce": true,
-    "report-uri": "https://localhost:8000/report/",
+    maxAge: DEFAULT_MAX_AGE,
+    enforce: true,
+    reportUri: "https://localhost:8000/report/",
   },
   "X-Frame-Options": true,
   "X-Content-Type-Options": true,
@@ -224,7 +224,7 @@ function getStrictTransportSecurity(
   options: Readonly<StrictTransportSecurityOptions>,
 ): string {
   const headerValue: string[] = [
-    `max-age=${validateMaxAge(options["max-age"])}`,
+    `max-age=${validateMaxAge(options.maxAge)}`,
   ];
 
   if (options.includeSubDomains) {
@@ -274,15 +274,15 @@ function getReferrerPolicy(
 
 function getExpectCt(options: Readonly<ExpectCtOptions>): string {
   const headerValue: string[] = [
-    `max-age=${validateMaxAge(options["max-age"])}`,
+    `max-age=${validateMaxAge(options.maxAge)}`,
   ];
 
   if (options.enforce) {
     headerValue.push("enforce");
   }
 
-  if (options["report-uri"]) {
-    headerValue.push(`report-uri="${options["report-uri"]}"`);
+  if (options.reportUri) {
+    headerValue.push(`report-uri="${options.reportUri}"`);
   }
 
   return headerValue.join(", ");
