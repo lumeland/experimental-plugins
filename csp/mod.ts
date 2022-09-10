@@ -12,6 +12,9 @@ type StrictTransportSecurityOptions = {
 export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
+
+  /** Leaks or fakes information about the server side technology */
+  "X-Powered-By"?: boolean | string;
 }
 
 export const defaults: Options = {
@@ -20,6 +23,7 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "X-Powered-By": "Fake Server",
 };
 
 /** A middleware to help secure your application */
@@ -36,6 +40,12 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (typeof options["X-Powered-By"] === "string") {
+      headers.set("X-Powered-By", options["X-Powered-By"] as string);
+    } else if (options["X-Powered-By"] !== false) {
+      headers.delete("X-Powered-By");
     }
 
     return response;
