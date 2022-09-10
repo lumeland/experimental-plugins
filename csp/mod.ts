@@ -9,6 +9,8 @@ type StrictTransportSecurityOptions = {
   "preload"?: boolean;
 };
 
+type XFrameOptions = "DENY" | "SAMEORIGIN" | boolean | string;
+
 type XPermittedCrossDomainPoliciesOptions =
   | "none"
   | "master-only"
@@ -19,6 +21,9 @@ type XPermittedCrossDomainPoliciesOptions =
 export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
+
+  /** Clickjacking protection */
+  "X-Frame-Options"?: XFrameOptions;
 
   /** MIME sniffing vulnerabilities protection */
   "X-Content-Type-Options"?: boolean;
@@ -39,6 +44,7 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "X-Frame-Options": true,
   "X-Content-Type-Options": true,
   "X-XSS-Protection": true,
   "X-Permitted-Cross-Domain-Policies": true,
@@ -59,6 +65,12 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (typeof options["X-Frame-Options"] === "string") {
+      headers.set("X-Frame-Options", options["X-Frame-Options"] as string);
+    } else if (options["X-Frame-Options"] !== false) {
+      headers.set("X-Frame-Options", "SAMEORIGIN");
     }
 
     if (options["X-Content-Type-Options"]) {
