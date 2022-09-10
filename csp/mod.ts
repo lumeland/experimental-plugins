@@ -20,6 +20,9 @@ export interface Options {
   /** Enforces SSL connections */
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
 
+  /**  Cross-site scripting (XSS) filter */
+  "X-XSS-Protection"?: boolean;
+
   /** Restricts loading of Adobe Flash or PDF documents from other domains */
   "X-Permitted-Cross-Domain-Policies"?: XPermittedCrossDomainPoliciesOptions;
 
@@ -33,6 +36,7 @@ export const defaults: Options = {
     "includeSubDomains": true,
     "preload": true,
   },
+  "X-XSS-Protection": true,
   "X-Permitted-Cross-Domain-Policies": true,
   "X-Powered-By": "Fake Server",
 };
@@ -51,6 +55,10 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
+    }
+
+    if (options["X-XSS-Protection"]) {
+      headers.set("X-XSS-Protection", "1; mode=block");
     }
 
     if (typeof options["X-Permitted-Cross-Domain-Policies"] === "string") {
