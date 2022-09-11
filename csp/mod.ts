@@ -153,13 +153,21 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
     }
 
-    if (options["Referrer-Policy"]) {
+    // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
+    if (
+      options["Referrer-Policy"] &&
+      headers.get("content-type")?.includes("html")
+    ) {
       const referrerPolicy = getReferrerPolicy(options["Referrer-Policy"]);
 
       headers.set("Referrer-Policy", referrerPolicy!);
     }
 
-    if (typeof options["Permissions-Policy"] === "string") {
+    // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
+    if (
+      typeof options["Permissions-Policy"] === "string" &&
+      headers.get("content-type")?.includes("html")
+    ) {
       headers.set("Permissions-Policy", options["Permissions-Policy"]);
     }
 
@@ -198,6 +206,7 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       headers.delete("X-Powered-By");
     }
 
+    // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
     if (options["Content-Security-Policy"]) {
       let contentSecurityPolicy = getContentSecurityPolicy(
         options["Content-Security-Policy"],
