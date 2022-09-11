@@ -207,15 +207,15 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
     }
 
     // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
-    if (options["Content-Security-Policy"]) {
+    if (
+      options["Content-Security-Policy"] &&
+      headers.get("content-type")?.includes("html")
+    ) {
       let contentSecurityPolicy = getContentSecurityPolicy(
         options["Content-Security-Policy"],
       );
 
-      if (
-        contentSecurityPolicy.includes("'nonce'") &&
-        headers.get("content-type")?.includes("html")
-      ) {
+      if (contentSecurityPolicy.includes("'nonce'")) {
         const nonce = crypto.randomUUID().replace(/-/g, "");
 
         contentSecurityPolicy = contentSecurityPolicy.replace(
@@ -242,6 +242,11 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
           });
         }
       }
+
+      headers.set(
+        "Content-Security-Policy",
+        contentSecurityPolicy,
+      );
     }
 
     return response;
