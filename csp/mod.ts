@@ -111,23 +111,30 @@ export const defaults: Options = {
   },
   "Content-Security-Policy": {
     "default-src": ["'none'"],
-    "script-src": ["cdn.jsdelivr.net", "'self'"],
-    "style-src": ["cdn.jsdelivr.net", "'self'"],
+    "script-src": [
+      "cdn.jsdelivr.net",
+      "'nonce'",
+      "'strict-dynamic'",
+      "'self'",
+      "'unsafe-hashes'",
+    ],
+    "style-src": ["cdn.jsdelivr.net", "'nonce'", "'self'"],
     "font-src": ["'self'"],
-    "img-src": ["shield.deno.dev", "'self'"],
+    "img-src": ["w3.org", "shield.deno.dev", "'self'", "data:"],
+    "media-src": ["'self'", "data:"],
   },
   "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  "Expect-CT": {
+  /* "Expect-CT": {
     maxAge: DEFAULT_MAX_AGE,
     enforce: true,
     reportUri: "https://localhost:8000/report/",
-  },
+  }, */
   "X-Frame-Options": true,
   "X-Content-Type-Options": true,
   "X-XSS-Protection": true,
   "X-Permitted-Cross-Domain-Policies": true,
-  "X-Powered-By": "Fake Server",
+  "X-Powered-By": false,
 };
 
 /** A middleware to help secure your application */
@@ -144,17 +151,6 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
-    }
-
-    if (options["Content-Security-Policy"]) {
-      const contentSecurityPolicy = getContentSecurityPolicy(
-        options["Content-Security-Policy"],
-      );
-
-      headers.set(
-        "Content-Security-Policy",
-        contentSecurityPolicy,
-      );
     }
 
     if (options["Referrer-Policy"]) {
@@ -202,6 +198,43 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       headers.delete("X-Powered-By");
     }
 
+    if (options["Content-Security-Policy"]) {
+      let contentSecurityPolicy = getContentSecurityPolicy(
+        options["Content-Security-Policy"],
+      );
+
+      if (
+        contentSecurityPolicy.includes("'nonce'") &&
+        headers.get("content-type")?.includes("html")
+      ) {
+        const nonce = crypto.randomUUID().replace(/-/g, "");
+
+        contentSecurityPolicy = contentSecurityPolicy.replace(
+          /\'nonce\'/g,
+          `'nonce-${nonce}'`,
+        );
+
+        headers.set(
+          "Content-Security-Policy",
+          contentSecurityPolicy,
+        );
+
+        const body = await response.text();
+
+        if (body) {
+          const newBody = body.replace(
+            /<(script|style)/g,
+            '<$1 nonce="' + nonce + '"',
+          );
+
+          return new Response(newBody, {
+            status: 200,
+            headers,
+          });
+        }
+      }
+    }
+
     return response;
   };
 }
@@ -247,11 +280,13 @@ function getContentSecurityPolicy(
 ): string {
   const headerValue = Object
     .keys(options)
-    .reduce((acc: string[], name: string) => {
-      const policy = options[name as keyof typeof options];
+    .reduce((acc: string[], directive: string) => {
+      const policy = options[directive as keyof typeof options];
+
       if (Array.isArray(policy) && policy.length > 0) {
-        acc.push(`${name} ${policy.join ? policy.join(" ") : policy}; `);
+        acc.push(`${directive} ${policy.join ? policy.join(" ") : policy}; `);
       }
+
       return acc;
     }, [])
     .join("")
