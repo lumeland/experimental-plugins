@@ -6,8 +6,8 @@ export interface Options {
 }
 
 export const defaults: Options = {
-  filter() {
-    return true;
+  filter(_, response: Response) {
+    return response.ok;
   },
 };
 
