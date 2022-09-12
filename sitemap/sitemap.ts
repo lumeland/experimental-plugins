@@ -35,7 +35,15 @@ export default function (userOptions?: Partial<Options>) {
     function getSitemapContent(site: Site) {
       // Get the search instance from the global data
       const search = site.globalData.search as Search;
-      const sitemapPages = search.pages(options.query, options.sort);
+      let sitemapPages = search.pages(options.query, options.sort);
+
+      const { page404 } = site.options.server;
+
+      if (page404) {
+        sitemapPages = sitemapPages.filter((page: Page) =>
+          page.data.url !== page404
+        );
+      }
 
       // Sort the pages
       sitemapPages.sort(buildSort(options.sort));
@@ -47,7 +55,7 @@ export default function (userOptions?: Partial<Options>) {
   ${sitemapPages.map((page: Page) => {
     return `<url>
     <loc>${site.url(page.data.url as string, true)}</loc>
-    <lastmod>${page?.data?.date?.toISOString().slice(0, 10) as string}</lastmod>
+    <lastmod>${page?.data?.date?.toISOString() as string}</lastmod>
   </url>
   `}).join("").trim()}
 </urlset>`.trim();
