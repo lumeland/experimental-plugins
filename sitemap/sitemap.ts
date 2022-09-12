@@ -9,6 +9,9 @@ export interface Options {
   /** The query to search pages included in the sitemap */
   query: string[];
 
+  /** The pages to exclude from the sitemap */
+  excludes: string[];
+
   /** The values to sort the sitemap */
   sort: string[];
 }
@@ -16,6 +19,7 @@ export interface Options {
 // Default options
 export const defaults: Options = {
   query: [],
+  excludes: [],
   sort: ["url=asc"],
 };
 
@@ -35,7 +39,14 @@ export default function (userOptions?: Partial<Options>) {
     function getSitemapContent(site: Site) {
       // Get the search instance from the global data
       const search = site.globalData.search as Search;
-      const sitemapPages = search.pages(options.query, options.sort);
+      let sitemapPages = search.pages(options.query, options.sort);
+
+      // Filter to remove `excludes` pages
+      if (Array.isArray(options.excludes) && options?.excludes?.length) {
+        sitemapPages = sitemapPages.filter((page) =>
+          !options.excludes.some((exclude) => page.dest.path.includes(exclude))
+        );
+      }
 
       // Sort the pages
       sitemapPages.sort(buildSort(options.sort));
@@ -47,7 +58,7 @@ export default function (userOptions?: Partial<Options>) {
   ${sitemapPages.map((page: Page) => {
     return `<url>
     <loc>${site.url(page.data.url as string, true)}</loc>
-    <lastmod>${page?.data?.date?.toISOString().slice(0, 10) as string}</lastmod>
+    <lastmod>${page.data.date?.toISOString() as string}</lastmod>
   </url>
   `}).join("").trim()}
 </urlset>`.trim();
