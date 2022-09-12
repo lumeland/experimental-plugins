@@ -2,7 +2,7 @@ import { merge } from "lume/core/utils.ts";
 import { Page } from "lume/core/filesystem.ts";
 import { buildSort } from "lume/plugins/search.ts";
 
-import type { Site } from "lume/core.ts";
+import type { Site, StaticFile } from "lume/core.ts";
 import type { Search } from "lume/plugins/search.ts";
 
 export interface Options {
@@ -11,12 +11,19 @@ export interface Options {
 
   /** The values to sort the sitemap */
   sort: string[];
+
+  /**
+   * Automatically generate a `robots.txt`, or add the
+   * `sitemap.xml` to an existing (works not with static assets)
+   */
+  enableRobots: boolean;
 }
 
 // Default options
 export const defaults: Options = {
   query: [],
   sort: ["url=asc"],
+  enableRobots: true,
 };
 
 /** A plugin to generate a sitemap.xml from page files after build */
@@ -30,6 +37,30 @@ export default function (userOptions?: Partial<Options>) {
 
       // Add to the sitemap page to pages
       site.pages.push(sitemap);
+
+      // Check if `robots.txt` is enabled
+      if (options.enableRobots) {
+        const robots = site.files.some((file: StaticFile) =>
+          file.dest === "/robots.txt"
+        );
+
+        if (!robots) {
+          const robots = site.pages.find((page: Page) =>
+            page.data.url === "/robots.txt"
+          );
+
+          if (robots) {
+            robots.content += `Sitemap: ${site.url("/sitemap.xml", true)}`;
+          } else {
+            site.pages.push(Page.create(
+              "/robots.txt",
+              `User-agent: *\nAllow: /\n\nSitemap: ${
+                site.url("/sitemap.xml", true)
+              }`,
+            ));
+          }
+        }
+      }
     });
 
     function getSitemapContent(site: Site) {
