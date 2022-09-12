@@ -9,9 +9,6 @@ export interface Options {
   /** The query to search pages included in the sitemap */
   query: string[];
 
-  /** The pages to exclude from the sitemap */
-  excludes: string[];
-
   /** The values to sort the sitemap */
   sort: string[];
 }
@@ -19,7 +16,6 @@ export interface Options {
 // Default options
 export const defaults: Options = {
   query: [],
-  excludes: [],
   sort: ["url=asc"],
 };
 
@@ -41,10 +37,11 @@ export default function (userOptions?: Partial<Options>) {
       const search = site.globalData.search as Search;
       let sitemapPages = search.pages(options.query, options.sort);
 
-      // Filter to remove `excludes` pages
-      if (Array.isArray(options.excludes) && options?.excludes?.length) {
-        sitemapPages = sitemapPages.filter((page) =>
-          !options.excludes.some((exclude) => page.dest.path.includes(exclude))
+      const { page404 } = site.options.server;
+
+      if (page404) {
+        sitemapPages = sitemapPages.filter((page: Page) =>
+          page.data.url !== page404
         );
       }
 
@@ -58,7 +55,7 @@ export default function (userOptions?: Partial<Options>) {
   ${sitemapPages.map((page: Page) => {
     return `<url>
     <loc>${site.url(page.data.url as string, true)}</loc>
-    <lastmod>${page.data.date?.toISOString() as string}</lastmod>
+    <lastmod>${page?.data?.date?.toISOString() as string}</lastmod>
   </url>
   `}).join("").trim()}
 </urlset>`.trim();
