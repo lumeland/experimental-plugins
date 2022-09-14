@@ -215,7 +215,7 @@ export interface Options {
   "X-Powered-By"?: boolean | string;
 }
 
-// All current default values are just for testing purpose with lume.land while dev
+// default config
 export const defaults: Options = {
   "Strict-Transport-Security": {
     maxAge: DEFAULT_MAX_AGE,
