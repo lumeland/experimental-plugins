@@ -1,46 +1,147 @@
 import type { Middleware, RequestHandler } from "lume/core.ts";
-import { merge } from "lume/core/utils.ts";
+import { isPlainObject, merge } from "lume/core/utils.ts";
 
 const DEFAULT_MAX_AGE = 365 * 86400;
 
 interface StrictTransportSecurityOptions {
+  /** The time, in seconds, that the browser should remember that a site is only to be accessed using HTTPS */
   maxAge: number;
+
+  /** If this optional parameter is specified, this rule applies to all of the site's subdomains as well */
   includeSubDomains?: boolean;
+
+  /** Enable preloading for assets (https://hstspreload.org/) */
   preload?: boolean;
 }
 
-type ContentSecurityPolicyDirectives =
-  | "child-src"
-  | "connect-src"
-  | "default-src"
-  | "font-src"
-  | "frame-src"
-  | "img-src"
-  | "manifest-src"
-  | "media-src"
-  | "object-src"
-  | "prefetch-src"
-  | "script-src"
-  | "script-src-elem"
-  | "script-src-attr"
-  | "style-src"
-  | "style-src-elem"
-  | "style-src-attr"
-  | "worker-src"
-  | "base-uri"
-  | "plugin-types"
-  | "sandbox"
-  | "form-action"
-  | "frame-ancestors"
-  | "navigate-to"
-  | "report-uri"
-  | "report-to"
-  | "block-all-mixed-content"
-  | "referrer"
-  | "require-sri-for"
-  | "require-trusted-types-for"
-  | "trusted-types"
-  | "upgrade-insecure-requests";
+interface ContentSecurityPolicyOptions {
+  mergeDefaults?: boolean;
+  directives: ContentSecurityPolicyDirectives;
+  reportOnly?: boolean;
+}
+
+interface ContentSecurityPolicyDirectives {
+  /** Defines valid sources for web workers and nested browsing contexts loaded using elements */
+  "child-src"?: string;
+
+  /** Applies to XMLHttpRequest (AJAX), WebSocket, fetch(), <a ping> or EventSource */
+  "connect-src"?: string[];
+
+  /** Defines the default policy for fetching resources */
+  "default-src"?: string[];
+
+  /** Defines valid sources of font resources (loaded via @font-face) */
+  "font-src"?: string[];
+
+  /** Defines valid sources for loading frames */
+  "frame-src"?: string[];
+
+  /** Defines valid sources of images */
+  "img-src"?: string[];
+
+  /** Restricts the URLs that application manifests can be loaded */
+  "manifest-src"?: string[];
+
+  /** Defines valid sources of audio and video, eg HTML5 <audio>, <video> elements */
+  "media-src"?: string[];
+
+  /** Defines valid sources of plugins, eg <object>, <embed> or <applet> */
+  "object-src"?: string[];
+
+  /** Defines valid sources for request prefetch and prerendering */
+  "prefetch-src"?: string[];
+
+  /** Defines valid sources of JavaScript */
+  "script-src"?: string[];
+
+  /** Defines valid sources for JavaScript <script> elements, but not inline script event handlers */
+  "script-src-elem"?: string[];
+
+  /** Defines valid sources for JavaScript inline event handlers */
+  "script-src-attr"?: string[];
+
+  /** Defines valid sources of stylesheets or CSS */
+  "style-src"?: string[];
+
+  /** Defines valid sources for stylesheets <style> elements and <link> elements with rel="stylesheet" */
+  "style-src-elem"?: string[];
+
+  /** Defines valid sources for inline styles applied to individual DOM elements */
+  "style-src-attr"?: string[];
+
+  /** Restricts the URLs which may be loaded as a Worker, SharedWorker or ServiceWorker */
+  "worker-src"?: string[];
+
+  /** Defines a set of allowed URLs which can be used in the src attribute of a HTML base tag */
+  "base-uri"?: string[];
+
+  /** Defines valid MIME types for plugins invoked via <object> and <embed> */
+  "plugin-types"?: string[];
+
+  /** Enables a sandbox for the requested resource similar to the iframe sandbox attribute */
+  "sandbox"?: string[];
+
+  /** Defines valid sources that can be used as an HTML <form> action */
+  "form-action"?: string[];
+
+  /** Defines valid sources for embedding the resource using <frame> <iframe> <object> <embed> <applet> */
+  "frame-ancestors"?: string[];
+
+  /** Restricts the URLs that the document may navigate to by any means */
+  "navigate-to"?: string[];
+
+  /** Instructs the browser to POST a reports of policy failures to this URI */
+  "report-uri"?: string;
+
+  /** Defines a reporting group name defined by a Report-To HTTP response header */
+  "report-to"?: string;
+
+  /**
+   * Deprecated:
+   * Prevents loading any assets over HTTP when the page uses HTTPS
+   */
+  "block-all-mixed-content"?: string[];
+
+  /**
+   * Deprecated:
+   * Used to specify information in the Referer header for links away from a page
+   */
+  "referrer"?: [
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "origin",
+    "origin-when-cross-origin",
+    "unsafe-url",
+  ];
+
+  /**
+   * Deprecated:
+   * Instructs the client to require the use of Subresource Integrity for scripts or styles on the page
+   */
+  "require-sri-for"?: string[];
+
+  /**
+   * Experimental:
+   * Instructs user agents to control the data passed to DOM XSS sink functions
+   */
+  "require-trusted-types-for"?: string[];
+
+  /**
+   * Experimental:
+   * Instructs user agents to restrict the creation of Trusted Types policies
+   */
+  "trusted-types"?: string[];
+
+  /** Instructs user agents to treat all of a site's insecure URLs */
+  "upgrade-insecure-requests"?: boolean;
+}
+
+interface ReportToOptions {
+  "group": string;
+  "max_age": number;
+  "endpoints": { "url": string }[];
+  "include_subdomains": boolean;
+}
 
 type ReferrerPolicyOptions =
   | ""
@@ -54,8 +155,16 @@ type ReferrerPolicyOptions =
   | "origin-when-cross-origin";
 
 interface ExpectCtOptions {
+  /**
+   * The number of seconds after reception of the Expect-CT header field during which the
+   * user agent should regard the host of the received message as a known Expect-CT host
+   */
   maxAge: number;
+  /** The URI where the user agent should report Expect-CT failures */
   enforce?: boolean;
+  /** Signals to the user agent that compliance with the Certificate Transparency policy
+   * should be enforced
+   */
   reportUri?: string;
 }
 
@@ -73,9 +182,13 @@ export interface Options {
   "Strict-Transport-Security"?: StrictTransportSecurityOptions;
 
   /** Allows to restrict resources that the web browser loads */
-  "Content-Security-Policy"?: Partial<
-    Record<ContentSecurityPolicyDirectives, string[]>
-  >;
+  "Content-Security-Policy"?: ContentSecurityPolicyOptions;
+
+  /** New header v1: Specifies a reporting group to which violation reports ought to be sent */
+  "Reporting-Endpoints"?: string;
+
+  /** Legacy header v0: Specifies a reporting group to which violation reports ought to be sent */
+  "Report-To"?: ReportToOptions;
 
   /** Controls how much referrer information should be included with requests */
   "Referrer-Policy"?: ReferrerPolicyOptions | ReferrerPolicyOptions[];
@@ -109,25 +222,7 @@ export const defaults: Options = {
     includeSubDomains: true,
     preload: true,
   },
-  "Content-Security-Policy": {
-    "default-src": ["'none'"],
-    "base-uri": ["'none'"],
-    "object-src": ["'none'"],
-    "frame-ancestors": ["'none'"],
-    "connect-src": [
-      "'self'",
-      "https://cdn.jsdelivr.net",
-      "https://*.algolia.net",
-      "https://*.algolianet.com",
-    ],
-    "script-src": ["'nonce'", "'self'", "cdn.jsdelivr.net"],
-    "style-src": ["'nonce'", "'self'", "cdn.jsdelivr.net"],
-    "font-src": ["'self'"],
-    "img-src": ["w3.org", "shield.deno.dev", "'self'", "data:"],
-    "media-src": ["'self'", "data:"],
-  },
   "Referrer-Policy": ["no-referrer", "strict-origin-when-cross-origin"],
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "X-Frame-Options": true,
   "X-Content-Type-Options": true,
   "X-XSS-Protection": true,
@@ -139,29 +234,33 @@ export const defaults: Options = {
 export default function csp(userOptions?: Partial<Options>): Middleware {
   const options = merge(defaults, userOptions);
 
+  if (!options["Content-Security-Policy"]?.mergeDefaults) {
+    // todo remove obj
+  }
+
   return async (request: Request, next: RequestHandler) => {
     const response = await next(request);
     const { headers } = response;
 
     if (options["Strict-Transport-Security"]) {
-      const strictTranportSecurity = getStrictTransportSecurity(
+      const strictTranportSecurity = stringifyStrictTransportSecurity(
         options["Strict-Transport-Security"],
       );
 
       headers.set("Strict-Transport-Security", strictTranportSecurity!);
     }
 
-    // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
     if (
       options["Referrer-Policy"] &&
       headers.get("content-type")?.includes("html")
     ) {
-      const referrerPolicy = getReferrerPolicy(options["Referrer-Policy"]);
+      const referrerPolicy = stringifyReferrerPolicy(
+        options["Referrer-Policy"],
+      );
 
       headers.set("Referrer-Policy", referrerPolicy!);
     }
 
-    // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
     if (
       typeof options["Permissions-Policy"] === "string" &&
       headers.get("content-type")?.includes("html")
@@ -170,7 +269,7 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
     }
 
     if (options["Expect-CT"]) {
-      const expectCt = getExpectCt(options["Expect-CT"]);
+      const expectCt = stringifyExpectCt(options["Expect-CT"]);
 
       headers.set("Expect-CT", expectCt!);
     }
@@ -204,14 +303,29 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
       headers.delete("X-Powered-By");
     }
 
-    // Should only be set for text/html https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers
+    if (
+      options["Reporting-Endpoints"] &&
+      headers.get("content-type")?.includes("html")
+    ) {
+      headers.set("Reporting-Endpoints", options["Reporting-Endpoints"]);
+    }
+
+    if (
+      isPlainObject(options["Report-To"]) &&
+      headers.get("content-type")?.includes("html")
+    ) {
+      headers.set("Report-To", JSON.stringify(options["Report-To"]));
+    }
+
     if (
       options["Content-Security-Policy"] &&
       headers.get("content-type")?.includes("html")
     ) {
-      let contentSecurityPolicy = getContentSecurityPolicy(
-        options["Content-Security-Policy"],
+      let contentSecurityPolicy = stringifyContentSecurityPolicy(
+        options["Content-Security-Policy"]["directives"],
       );
+
+      let newBody;
 
       if (contentSecurityPolicy.includes("'nonce'")) {
         const nonce = crypto.randomUUID().replace(/-/g, "");
@@ -221,30 +335,29 @@ export default function csp(userOptions?: Partial<Options>): Middleware {
           `'nonce-${nonce}'`,
         );
 
-        headers.set(
-          "Content-Security-Policy",
-          contentSecurityPolicy,
-        );
-
         const body = await response.text();
 
         if (body) {
-          const newBody = body.replace(
+          newBody = body.replace(
             /<(script|style)/g,
             '<$1 nonce="' + nonce + '"',
           );
-
-          return new Response(newBody, {
-            status: 200,
-            headers,
-          });
         }
       }
 
       headers.set(
-        "Content-Security-Policy",
+        options["Content-Security-Policy"]["reportOnly"]
+          ? "Content-Security-Policy-Report-Only"
+          : "Content-Security-Policy",
         contentSecurityPolicy,
       );
+
+      if (typeof newBody !== "undefined") {
+        return new Response(newBody, {
+          status: 200,
+          headers,
+        });
+      }
     }
 
     return response;
@@ -265,12 +378,22 @@ function validateMaxAge(maxAge: number): number {
   return maxAge;
 }
 
-function getStrictTransportSecurity(
+function stringifyStrictTransportSecurity(
   options: Readonly<StrictTransportSecurityOptions>,
 ): string {
   const headerValue: string[] = [
     `max-age=${validateMaxAge(options.maxAge)}`,
   ];
+
+  if (typeof options.includeSubDomains !== "boolean") {
+    throw new Error(
+      "CSP Middleware: includeSubDomains must be type of boolean",
+    );
+  }
+
+  if (typeof options.preload !== "boolean") {
+    throw new Error("CSP Middleware: preload must be type of boolean");
+  }
 
   if (options.includeSubDomains) {
     headerValue.push("includeSubDomains");
@@ -283,11 +406,9 @@ function getStrictTransportSecurity(
   return headerValue.join("; ");
 }
 
-function getContentSecurityPolicy(
+function stringifyContentSecurityPolicy(
   options: Readonly<
-    Partial<
-      Record<ContentSecurityPolicyDirectives, string[]>
-    >
+    Partial<ContentSecurityPolicyOptions["directives"]>
   >,
 ): string {
   const headerValue = Object
@@ -297,6 +418,16 @@ function getContentSecurityPolicy(
 
       if (Array.isArray(policy) && policy.length > 0) {
         acc.push(`${directive} ${policy.join ? policy.join(" ") : policy}; `);
+      } else if (typeof policy === "boolean") {
+        acc.push(`${directive}; `);
+      } else if (typeof policy === "string") {
+        acc.push(`${directive} ${policy}; `);
+      } else {
+        throw new Error(
+          `CSP Middleware: Invalid directive in ContentSecurityPolicyOptions: ${
+            directive ? directive : ""
+          }`,
+        );
       }
 
       return acc;
@@ -307,7 +438,7 @@ function getContentSecurityPolicy(
   return headerValue;
 }
 
-function getReferrerPolicy(
+function stringifyReferrerPolicy(
   options: Readonly<ReferrerPolicyOptions | ReferrerPolicyOptions[]>,
 ): string {
   const headerValue = typeof options === "string" ? [options] : options;
@@ -319,10 +450,22 @@ function getReferrerPolicy(
   return headerValue.join(", ");
 }
 
-function getExpectCt(options: Readonly<ExpectCtOptions>): string {
+function stringifyExpectCt(options: Readonly<ExpectCtOptions>): string {
   const headerValue: string[] = [
     `max-age=${validateMaxAge(options.maxAge)}`,
   ];
+
+  if (typeof options.enforce !== "boolean") {
+    throw new Error(
+      "CSP Middleware: includeSubDomains must be type of boolean",
+    );
+  }
+
+  if (typeof options.reportUri !== "string") {
+    throw new Error(
+      "CSP Middleware: includeSubDomains must be type of boolean",
+    );
+  }
 
   if (options.enforce) {
     headerValue.push("enforce");
