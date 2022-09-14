@@ -106,13 +106,12 @@ interface ContentSecurityPolicyDirectives {
    * Deprecated:
    * Used to specify information in the Referer header for links away from a page
    */
-  "referrer"?: [
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "origin",
-    "origin-when-cross-origin",
-    "unsafe-url",
-  ];
+  "referrer"?:
+    | "no-referrer"
+    | "no-referrer-when-downgrade"
+    | "origin"
+    | "origin-when-cross-origin"
+    | "unsafe-url";
 
   /**
    * Deprecated:
