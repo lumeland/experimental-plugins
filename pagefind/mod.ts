@@ -1,10 +1,12 @@
 import { merge } from "lume/core/utils.ts";
 import { posix } from "lume/deps/path.ts";
+import downloadBinary from "./deps.ts";
 
 import type { Site } from "lume/core.ts";
 
 export interface Options {
-  ui?: {
+  binary: string;
+  ui: {
     /** The container id to insert the search */
     containerId: string;
 
@@ -43,6 +45,7 @@ export interface Options {
 }
 
 const defaults: Options = {
+  binary: "./_bin/pagefind",
   ui: {
     containerId: "search",
     showImages: false,
@@ -50,7 +53,7 @@ const defaults: Options = {
     resetStyles: true,
   },
   indexing: {
-    bundleDirectory: "_pagefind",
+    bundleDirectory: "pagefind",
     rootSelector: "html",
     glob: "**/*.html",
     forceLanguage: false,
@@ -74,6 +77,7 @@ export default function (userOptions?: Partial<Options>) {
           showEmptyFilters: ui.showEmptyFilters,
           resetStyles: ui.resetStyles,
           bundlePath: site.url(posix.join(indexing.bundleDirectory, "/")),
+          baseUrl: site.url("/"),
         };
 
         // Insert UI styles and scripts
@@ -107,17 +111,28 @@ export default function (userOptions?: Partial<Options>) {
       });
     }
 
+    site.addEventListener("beforeBuild", async () => {
+      await downloadBinary(options.binary);
+    });
+
     site.addEventListener("afterBuild", () => {
-      const command = buildCommand(options.indexing, site.dest());
+      const command = buildCommand(
+        options.binary,
+        options.indexing,
+        site.dest(),
+      );
       site.run(command);
     });
   };
 }
 
-function buildCommand(options: Options["indexing"], source: string): string {
+function buildCommand(
+  binary: string,
+  options: Options["indexing"],
+  source: string,
+): string {
   const args = [
-    "npx",
-    "pagefind",
+    binary,
     "--source",
     `"${source}"`,
     "--bundle-dir",
