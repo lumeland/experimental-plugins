@@ -118,7 +118,7 @@ export default function (userOptions?: Partial<Options>) {
         options.indexing,
         site.dest(),
       );
-      site.run(command);
+      await site.run(command);
     });
   };
 }
