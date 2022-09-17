@@ -111,13 +111,10 @@ export default function (userOptions?: Partial<Options>) {
       });
     }
 
-    site.addEventListener("beforeBuild", async () => {
-      await downloadBinary(options.binary);
-    });
-
-    site.addEventListener("afterBuild", () => {
+    site.addEventListener("afterBuild", async () => {
+      const binary = await downloadBinary(options.binary);
       const command = buildCommand(
-        options.binary,
+        binary,
         options.indexing,
         site.dest(),
       );
