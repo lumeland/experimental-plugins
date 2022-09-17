@@ -113,12 +113,14 @@ export default function (userOptions?: Partial<Options>) {
 
     site.addEventListener("afterBuild", async () => {
       const binary = await downloadBinary(options.binary);
-      const command = buildCommand(
+      const cmd = buildCommand(
         binary,
         options.indexing,
         site.dest(),
       );
-      await site.run(command);
+      const process = Deno.run({ cmd });
+      await process.status();
+      process.close();
     });
   };
 }
@@ -127,17 +129,17 @@ function buildCommand(
   binary: string,
   options: Options["indexing"],
   source: string,
-): string {
+): string[] {
   const args = [
     binary,
     "--source",
-    `"${source}"`,
+    source,
     "--bundle-dir",
-    `"${options.bundleDirectory}"`,
+    options.bundleDirectory,
     "--root-selector",
-    `"${options.rootSelector}"`,
+    options.rootSelector,
     "--glob",
-    `"${options.glob}"`,
+    options.glob,
   ];
 
   if (options.forceLanguage) {
@@ -148,5 +150,5 @@ function buildCommand(
     args.push("--verbose");
   }
 
-  return args.join(" ");
+  return args;
 }
