@@ -25,11 +25,12 @@ export default async function downloadBin(options: Options): Promise<string> {
   const dest = Deno.build.os === "windows"
     ? resolve(options.dest) + ".exe"
     : resolve(options.dest);
-  console.log({ dest });
+
   // Check if the file already exists and return the path
   try {
     await Deno.stat(dest);
     if (!options.overwrite) {
+      console.log(`Using binary file at ${dest}`);
       return dest;
     }
   } catch {
@@ -40,7 +41,6 @@ export default async function downloadBin(options: Options): Promise<string> {
   const target = options.targets.find((target) => {
     return target.os === Deno.build.os && target.arch === Deno.build.arch;
   });
-  console.log({ target });
 
   if (!target) {
     throw new Error("No target found");
@@ -51,9 +51,8 @@ export default async function downloadBin(options: Options): Promise<string> {
     .replaceAll("{target}", target.name)
     .replaceAll("{version}", options.version);
 
-  console.log(`Downloading ${url}...`);
   const tmp = await Deno.makeTempDir();
-  console.log({ tmp, url });
+
   await download(new URL(url), join(tmp, "tmp.tar.gz"));
 
   // Extract the binary
@@ -69,8 +68,7 @@ export default async function downloadBin(options: Options): Promise<string> {
 
   try {
     await Deno.mkdir(dirname(dest), { recursive: true });
-  } catch (err) {
-    console.log({ err });
+  } catch {
     // Directory exists
   }
 
@@ -103,15 +101,11 @@ export default async function downloadBin(options: Options): Promise<string> {
 }
 
 async function download(url: URL, dest: string): Promise<void> {
+  console.log(`Downloading ${url}...`);
+
   const blob = await (await fetch(url)).blob();
   const sha256sum = await (await fetch(url.href + ".sha256")).text();
   const content = new Uint8Array(await blob.arrayBuffer());
-
-  try {
-    await Deno.mkdir(dirname(dest), { recursive: true });
-  } catch {
-    // Directory exists
-  }
 
   await checkSha256sum(content, sha256sum);
   await Deno.writeFile(dest, content);
@@ -126,7 +120,9 @@ async function checkSha256sum(
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join(
     "",
   );
+  console.log({ hashHex, sha256sum });
   sha256sum = sha256sum.split(/\s+/).shift()!;
+  console.log({ hashHex, sha256sum });
 
   if (hashHex !== sha256sum) {
     throw new Error("SHA-256 checksum mismatch");
