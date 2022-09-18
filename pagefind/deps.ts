@@ -1,4 +1,4 @@
-import dbin from "https://deno.land/x/dbin@v0.1.0/mod.ts";
+import dbin from "./dbin.ts";
 
 export async function downloadBinary(dest: string): Promise<string> {
   return await dbin({
