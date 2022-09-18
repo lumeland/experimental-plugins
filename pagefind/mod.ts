@@ -1,6 +1,6 @@
 import { merge } from "lume/core/utils.ts";
 import { posix } from "lume/deps/path.ts";
-import { downloadBinary } from "./deps.ts";
+import downloadBinary from "./deps.ts";
 
 import type { Site } from "lume/core.ts";
 
@@ -113,24 +113,25 @@ export default function (userOptions?: Partial<Options>) {
 
     site.addEventListener("afterBuild", async () => {
       const binary = await downloadBinary(options.binary);
-      const { code, stdout, stderr } = await Deno.spawn(
+      const cmd = buildCommand(
         binary,
-        {
-          args: buildArgs(options.indexing, site.dest()),
-        },
+        options.indexing,
+        site.dest(),
       );
-      console.log({ binary, code });
-      console.log(new TextDecoder().decode(stdout));
-      console.log(new TextDecoder().decode(stderr));
+      const process = Deno.run({ cmd });
+      await process.status();
+      process.close();
     });
   };
 }
 
-function buildArgs(
+function buildCommand(
+  binary: string,
   options: Options["indexing"],
   source: string,
 ): string[] {
   const args = [
+    binary,
     "--source",
     source,
     "--bundle-dir",

@@ -1,6 +1,6 @@
-import dbin from "./dbin.ts";
+import dbin from "https://deno.land/x/dbin@v0.1.1/mod.ts";
 
-export async function downloadBinary(dest: string): Promise<string> {
+export default async function downloadBinary(dest: string): Promise<string> {
   return await dbin({
     pattern:
       "https://github.com/CloudCannon/pagefind/releases/download/{version}/pagefind-{version}-{target}.tar.gz",
