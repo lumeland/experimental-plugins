@@ -26,6 +26,10 @@ Minify HTML, CSS, JS and JSON files using
 - To minify CSS, it's recommended to use the plugin ParcelCSS, already provided
   by Lume.
 
+## MDX
+
+Use .mdx format to build pages.
+
 ## Jimp
 
 To transform image files using [Jimp](https://github.com/oliver-moran/jimp).
