@@ -1,7 +1,7 @@
-import { Site } from "lume/core.ts";
+import type { Page, Site } from "lume/core.ts";
 import { merge } from "lume/core/utils.ts";
 
-import { getTwBinFullPath } from "./deps.ts";
+import { addCssLink2Head, getTwBinFullPath } from "./deps.ts";
 
 export interface Options {
   version: string;
@@ -18,6 +18,8 @@ export default function tailwindcss(userOptions?: Partial<Options>) {
   const { version, dir } = merge(defaults, userOptions);
 
   return (site: Site) => {
+    site.process([".html"], (page: Page) => addCssLink2Head(page));
+
     site.addEventListener("afterBuild", async () => {
       const tailwindBin = await getTwBinFullPath(version, dir);
       const process = Deno.run({
