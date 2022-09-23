@@ -4,11 +4,10 @@ import dbin from "dbin/mod.ts";
 
 export async function getTwBinFullPath(
   version: string,
-  dir: string,
+  dir: string
 ): Promise<string> {
   return await dbin({
-    pattern:
-      `https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-{target}`,
+    pattern: `https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-{target}`,
     version,
     targets: [
       { name: "linux-x64", os: "linux", arch: "x86_64" },
@@ -24,11 +23,9 @@ export async function getTwBinFullPath(
 export function addCssLink2Head(page: Page) {
   const { document } = page;
   if (!document) return;
-  const cssLinkEl = document.createElement(
-    `<link rel="stylesheet" href="css/main.css" />`,
-  );
-
-  if (!Array.from(document.head.children).includes(cssLinkEl)) {
+  const cssLinkEl = document.createElement("link");
+  cssLinkEl.setAttribute("href", "css/main.css");
+  cssLinkEl.setAttribute("rel", "stylesheet");
+  if (!Array.from(document.head.children).includes(cssLinkEl))
     document.head.appendChild(cssLinkEl);
-  }
 }
