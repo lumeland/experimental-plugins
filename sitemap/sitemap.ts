@@ -7,10 +7,10 @@ import type { Search } from "lume/plugins/search.ts";
 
 export interface Options {
   /** The query to search pages included in the sitemap */
-  query: string[];
+  query?: string | string[];
 
   /** The values to sort the sitemap */
-  sort: string[];
+  sort?: string | string[];
 
   /**
    * Automatically generate a `robots.txt`, or add the
@@ -21,8 +21,8 @@ export interface Options {
 
 // Default options
 export const defaults: Options = {
-  query: [],
-  sort: ["url=asc"],
+  query: undefined,
+  sort: "url=asc",
   enableRobots: true,
 };
 
@@ -84,9 +84,11 @@ export default function (userOptions?: Partial<Options>) {
 <?xml version="1.0" encoding="utf-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   ${sitemapPages.map((page: Page) => {
+    const lastmod = page.data.date
+      ? `<lastmod>${page.data.date.toISOString()}</lastmod>`
+      : "";
     return `<url>
-    <loc>${site.url(page.data.url as string, true)}</loc>
-    <lastmod>${page?.data?.date?.toISOString() as string}</lastmod>
+    <loc>${site.url(page.data.url as string, true)}</loc>${lastmod}
   </url>
   `}).join("").trim()}
 </urlset>`.trim();
