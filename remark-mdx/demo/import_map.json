@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "lume/": "file:///Users/oscarotero/www/lumeland/lume/",
+    "preact/jsx-runtime": "file:///Users/oscarotero/www/lumeland/lume/deps/preact_runtime.ts"
+  }
+}
