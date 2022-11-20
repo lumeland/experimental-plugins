@@ -22,3 +22,7 @@ To transform image files using [Jimp](https://github.com/oliver-moran/jimp).
 
 Middleware to integrate Google Analytics in backend, using
 [g_a](https://deno.land/x/g_a@0.1.2/mod.ts)
+
+## Reading Time
+
+Estimated reading time for markdown pages.
