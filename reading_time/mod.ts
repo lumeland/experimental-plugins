@@ -32,9 +32,11 @@ export default function (userOptions?: Partial<Options>) {
         };
       }
 
-      const matches = content.match(/\w+/g);
-
-      const wordCount = matches ? matches.length : 0;
+      const segmenter = new Intl.Segmenter(page.data.lang || "en", {
+        granularity: "word",
+      });
+      const words = segmenter.segment(content);
+      const wordCount = [...words].filter((word) => word.isWordLike).length;
       const minutes = wordCount / options.wordsPerMinute;
 
       const time = Math.round(minutes * 60 * 1000);
