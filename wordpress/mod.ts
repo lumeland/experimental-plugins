@@ -1,15 +1,11 @@
 import { merge } from "lume/core/utils.ts";
-import type { Site } from "lume/core.ts";
+import type { PageData, Site } from "lume/core.ts";
 import {
-  WP_REST_API_Category,
   WP_REST_API_Post,
-  WP_REST_API_Tag,
+  WP_REST_API_Term,
+  WP_REST_API_User,
 } from "npm:wp-types@3.61.0";
 
-export type WP_Post = WP_REST_API_Post;
-export type WP_Page = WP_REST_API_Post;
-export type WP_Category = WP_REST_API_Category;
-export type WP_Tag = WP_REST_API_Tag;
 export interface WP_Info {
   name: string;
   description: string;
@@ -51,23 +47,40 @@ export class WordPressAPI {
   }
 
   /** Returns all posts of the site */
-  async *posts(): AsyncGenerator<WP_Post> {
-    yield* this.#fetchAll<WP_Post>("posts");
+  async *posts(): AsyncGenerator<PageData> {
+    for await (const post of this.#fetchAll<WP_REST_API_Post>("posts")) {
+      yield postToData(post);
+    }
   }
 
   /** Returns all pages of the site */
-  async *pages(): AsyncGenerator<WP_Page> {
-    yield* this.#fetchAll<WP_Page>("pages");
+  async *pages(): AsyncGenerator<PageData> {
+    for await (const page of this.#fetchAll<WP_REST_API_Post>("pages")) {
+      yield postToData(page);
+    }
   }
 
   /** Returns all categories of the site */
-  async *categories(): AsyncGenerator<WP_Category> {
-    yield* this.#fetchAll<WP_Category>("categories");
+  async *categories(): AsyncGenerator<PageData> {
+    for await (
+      const category of this.#fetchAll<WP_REST_API_Term>("categories")
+    ) {
+      yield termToData(category);
+    }
   }
 
   /** Returns all tags of the site */
-  async *tags(): AsyncGenerator<WP_Tag> {
-    yield* this.#fetchAll<WP_Tag>("tags");
+  async *tags(): AsyncGenerator<PageData> {
+    for await (const tag of this.#fetchAll<WP_REST_API_Term>("tags")) {
+      yield termToData(tag);
+    }
+  }
+
+  /** Returns all authors of the site */
+  async *authors(): AsyncGenerator<PageData> {
+    for await (const user of this.#fetchAll<WP_REST_API_User>("users")) {
+      yield userToData(user);
+    }
   }
 
   async *#fetchAll<T>(path: string): AsyncGenerator<T> {
@@ -93,4 +106,45 @@ export class WordPressAPI {
     const res = await fetch(new URL(path, this.#api_endpoint));
     return await res.json() as T[];
   }
+}
+
+function postToData(post: WP_REST_API_Post): PageData {
+  return {
+    id: post.id,
+    url: new URL(post.link).pathname,
+    slug: post.slug,
+    date: new Date(post.date),
+    title: post.title.rendered,
+    content: post.content.rendered,
+    excerpt: post.excerpt.rendered,
+    category_id: post.categories,
+    tag_id: post.tags,
+    sticky: post.sticky,
+    author: post.author,
+    type: post.type,
+  };
+}
+
+function termToData(term: WP_REST_API_Term): PageData {
+  return {
+    id: term.id,
+    url: new URL(term.link).pathname,
+    slug: term.slug,
+    title: term.name,
+    name: term.name,
+    count: term.count,
+    type: term.taxonomy,
+  };
+}
+
+function userToData(term: WP_REST_API_User): PageData {
+  return {
+    id: term.id,
+    url: new URL(term.link).pathname,
+    slug: term.slug,
+    title: term.name,
+    name: term.name,
+    type: "author",
+    avatar_urls: term.avatar_urls,
+  };
 }
