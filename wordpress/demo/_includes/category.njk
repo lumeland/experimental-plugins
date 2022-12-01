@@ -1,0 +1,18 @@
+---
+layout: base.njk
+---
+<article>
+  <header>
+    <h1>{{ name }}</h1>
+  </header>
+
+  {% if post.length %}
+    <h2>Posts in the category {{ name }}</h2>
+
+    <ul>
+    {% for item in post %}
+      <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+</article>

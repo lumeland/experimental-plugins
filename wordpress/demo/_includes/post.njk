@@ -1,12 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ title }}</title>
-</head>
-<body>
+---
+layout: base.njk
+---
+<article>
+  <header>
+    <h1>{{ title }}</h1>
+
+    {% if author %}
+    By: <a href="{{ author.url }}">{{ author.name }}</a>
+    {% endif %}
+
+    {% if category.length %}
+      Categories:
+      {% for item in category %}
+      <a href="{{ item.url }}">{{ item.name }}</a>
+      {% endfor %}
+    {% endif %}
+  
+    {% if post_tag.length %}
+      Tags:
+      {% for item in category %}
+      <a href="{{ item.url }}">{{ item.name }}</a>
+      {% endfor %}
+    {% endif %}
+  </header>
+
   {{ content | safe }}
-</body>
-</html>
+</article>

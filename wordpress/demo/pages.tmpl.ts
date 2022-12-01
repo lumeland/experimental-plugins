@@ -1,19 +1,17 @@
-export const layout = "post.njk";
-
 export default async function* ({ wp }) {
   for await (const page of wp.posts()) {
-    yield page;
+    yield { ...page, layout: "post.njk" };
   }
   for await (const page of wp.authors()) {
-    yield page;
+    yield { ...page, layout: "author.njk" };
   }
   for await (const page of wp.tags()) {
-    yield page;
+    yield { ...page, layout: "tag.njk" };
   }
   for await (const page of wp.categories()) {
-    yield page;
+    yield { ...page, layout: "category.njk" };
   }
   for await (const page of wp.pages()) {
-    yield page;
+    yield { ...page, layout: "page.njk" };
   }
 }

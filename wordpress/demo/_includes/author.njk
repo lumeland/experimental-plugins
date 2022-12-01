@@ -1,0 +1,28 @@
+---
+layout: base.njk
+---
+<article>
+  <header>
+    <h1>{{ name }}</h1>
+  </header>
+
+  {% if post.length %}
+    <h2>Posts by {{ name }}</h2>
+
+    <ul>
+    {% for item in post %}
+      <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if static_page.length %}
+    <h2>Static pages by {{ name }}</h2>
+
+    <ul>
+    {% for item in static_page %}
+      <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+</article>

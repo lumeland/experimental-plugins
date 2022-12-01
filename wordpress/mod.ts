@@ -1,6 +1,7 @@
 import { merge } from "lume/core/utils.ts";
 import type { PageData, Site } from "lume/core.ts";
 import {
+  WP_REST_API_Attachment,
   WP_REST_API_Post,
   WP_REST_API_Term,
   WP_REST_API_User,
@@ -17,15 +18,17 @@ export interface WP_Info {
 
 export interface Options {
   wp_url: string;
+  prefix: string;
 }
 
 export const defaults: Options = {
   wp_url: "https://localhost",
+  prefix: "wp_",
 };
 
 export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
-  const wp = new WordPressAPI(options.wp_url);
+  const wp = new WordPressAPI(options);
 
   return (site: Site) => {
     site.data("wp", wp);
@@ -35,10 +38,12 @@ export default function (userOptions?: Partial<Options>) {
 export class WordPressAPI {
   #main_endpoint: URL;
   #api_endpoint: URL;
+  #prefix: string;
 
-  constructor(wp_url: string) {
-    this.#main_endpoint = new URL(wp_url);
-    this.#api_endpoint = new URL("./wp-json/wp/v2/", wp_url);
+  constructor(options: Options) {
+    this.#main_endpoint = new URL(options.wp_url);
+    this.#api_endpoint = new URL("./wp-json/wp/v2/", options.wp_url);
+    this.#prefix = options.prefix;
   }
 
   async info(): Promise<WP_Info> {
@@ -49,14 +54,14 @@ export class WordPressAPI {
   /** Returns all posts of the site */
   async *posts(): AsyncGenerator<PageData> {
     for await (const post of this.#fetchAll<WP_REST_API_Post>("posts")) {
-      yield postToData(post);
+      yield postToData(post, this.#prefix);
     }
   }
 
   /** Returns all pages of the site */
   async *pages(): AsyncGenerator<PageData> {
     for await (const page of this.#fetchAll<WP_REST_API_Post>("pages")) {
-      yield postToData(page);
+      yield pageToData(page, this.#prefix);
     }
   }
 
@@ -65,21 +70,28 @@ export class WordPressAPI {
     for await (
       const category of this.#fetchAll<WP_REST_API_Term>("categories")
     ) {
-      yield termToData(category);
+      yield termToData(category, this.#prefix);
     }
   }
 
   /** Returns all tags of the site */
   async *tags(): AsyncGenerator<PageData> {
     for await (const tag of this.#fetchAll<WP_REST_API_Term>("tags")) {
-      yield termToData(tag);
+      yield termToData(tag, this.#prefix);
     }
   }
 
   /** Returns all authors of the site */
   async *authors(): AsyncGenerator<PageData> {
     for await (const user of this.#fetchAll<WP_REST_API_User>("users")) {
-      yield userToData(user);
+      yield userToData(user, this.#prefix);
+    }
+  }
+
+  /** Returns all media of the site */
+  async *media(): AsyncGenerator<PageData> {
+    for await (const media of this.#fetchAll<WP_REST_API_Attachment>("media")) {
+      yield mediaToData(media, this.#prefix);
     }
   }
 
@@ -108,7 +120,7 @@ export class WordPressAPI {
   }
 }
 
-function postToData(post: WP_REST_API_Post): PageData {
+function postToData(post: WP_REST_API_Post, prefix: string): PageData {
   return {
     id: post.id,
     url: new URL(post.link).pathname,
@@ -118,14 +130,28 @@ function postToData(post: WP_REST_API_Post): PageData {
     content: post.content.rendered,
     excerpt: post.excerpt.rendered,
     category_id: post.categories,
-    tag_id: post.tags,
+    post_tag_id: post.tags,
     sticky: post.sticky,
-    author: post.author,
-    type: post.type,
+    author_id: post.author,
+    type: `${prefix}post`,
   };
 }
 
-function termToData(term: WP_REST_API_Term): PageData {
+function pageToData(post: WP_REST_API_Post, prefix: string): PageData {
+  return {
+    id: post.id,
+    url: new URL(post.link).pathname,
+    slug: post.slug,
+    date: new Date(post.date),
+    title: post.title.rendered,
+    content: post.content.rendered,
+    excerpt: post.excerpt.rendered,
+    author_id: post.author,
+    type: `${prefix}page`,
+  };
+}
+
+function termToData(term: WP_REST_API_Term, prefix: string): PageData {
   return {
     id: term.id,
     url: new URL(term.link).pathname,
@@ -133,18 +159,33 @@ function termToData(term: WP_REST_API_Term): PageData {
     title: term.name,
     name: term.name,
     count: term.count,
-    type: term.taxonomy,
+    type: prefix + (term.taxonomy === "category" ? "category" : "tag"),
   };
 }
 
-function userToData(term: WP_REST_API_User): PageData {
+function userToData(term: WP_REST_API_User, prefix: string): PageData {
   return {
     id: term.id,
     url: new URL(term.link).pathname,
     slug: term.slug,
     title: term.name,
     name: term.name,
-    type: "author",
     avatar_urls: term.avatar_urls,
+    type: `${prefix}author`,
+  };
+}
+
+function mediaToData(media: WP_REST_API_Attachment, prefix: string): PageData {
+  return {
+    id: media.id,
+    url: new URL(media.source_url).pathname,
+    slug: media.slug,
+    title: media.title.rendered,
+    caption: media.caption.rendered,
+    alt_text: media.alt_text,
+    media_type: media.media_type,
+    mime_type: media.mime_type,
+    media_details: media.media_details,
+    type: `${prefix}media`,
   };
 }

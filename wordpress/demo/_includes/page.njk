@@ -1,0 +1,14 @@
+---
+layout: base.njk
+---
+<article>
+  <header>
+    <h1>{{ title }}</h1>
+
+    {% if author %}
+    By: <a href="{{ author.url }}">{{ author.name }}</a>
+    {% endif %}
+  </header>
+
+  {{ content | safe }}
+</article>
