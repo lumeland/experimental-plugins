@@ -1,0 +1,42 @@
+<button class="reveal">
+    <span class="vh">Reveal spoiler</span>
+    <slot aria-hidden="true" class="content" webc:keep></slot>
+</button>
+<style webc:scoped>
+    :host { display: contents }
+    .reveal, .reveal:hover, .reveal:focus, .reveal:active {
+        all: initial;
+        font: inherit;
+        display: inline;
+        color: transparent;
+        border: none;
+        background: var(--fg, black);
+    }
+    .content { opacity: 0 }
+    .vh {
+        display: inline-block;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+</style>
+<script>
+customElements.define("no-spoiler", class extends HTMLElement {
+    connectedCallback() {
+        const reveal = this.querySelector(".reveal");
+        const vh = this.querySelector(".vh");
+
+        reveal.addEventListener("click", _ => {
+            vh.remove();
+            reveal.before(...reveal.childNodes);
+            reveal.remove();
+            reveal.animate({
+                background: "none",
+            }, {
+                duration: 500,
+            })
+        })
+    }
+})
+</script>

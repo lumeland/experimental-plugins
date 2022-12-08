@@ -1,0 +1,22 @@
+<button class="other">
+  <span class="vh">Other</span>
+  <slot aria-hidden="true" class="content" webc:keep></slot>
+</button>
+<style webc:scoped>
+  :host { display: contents }
+  .other, .other:hover, .other:focus, .other:active {
+      all: initial;
+      font: inherit;
+      display: inline;
+      border: none;
+      background: var(--fg, yellow);
+  }
+  .content { opacity: 0 }
+  .vh {
+      display: inline-block;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+  }
+</style>

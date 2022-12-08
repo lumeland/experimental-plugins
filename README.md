@@ -26,3 +26,7 @@ Middleware to integrate Google Analytics in backend, using
 ## Reading Time
 
 Estimated reading time for markdown pages.
+
+## WebC
+
+To use [WebC](https://github.com/11ty/webc) components in the templates.
