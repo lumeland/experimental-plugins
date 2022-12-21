@@ -27,6 +27,10 @@ Middleware to integrate Google Analytics in backend, using
 
 Estimated reading time for markdown pages.
 
+## Tailwind
+
+To use Tailwind for styling.
+
 ## WebC
 
 To use [WebC](https://github.com/11ty/webc) components in the templates.
