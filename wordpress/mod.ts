@@ -52,54 +52,59 @@ export class WordPressAPI {
   }
 
   /** Returns all posts of the site */
-  async *posts(): AsyncGenerator<PageData> {
-    for await (const post of this.#fetchAll<WP_REST_API_Post>("posts")) {
+  async *posts(limit = Infinity): AsyncGenerator<Partial<PageData>> {
+    for await (const post of this.#fetchAll<WP_REST_API_Post>("posts", limit)) {
       yield postToData(post, this.#prefix);
     }
   }
 
   /** Returns all pages of the site */
-  async *pages(): AsyncGenerator<PageData> {
-    for await (const page of this.#fetchAll<WP_REST_API_Post>("pages")) {
+  async *pages(limit = Infinity): AsyncGenerator<Partial<PageData>> {
+    for await (const page of this.#fetchAll<WP_REST_API_Post>("pages", limit)) {
       yield pageToData(page, this.#prefix);
     }
   }
 
   /** Returns all categories of the site */
-  async *categories(): AsyncGenerator<PageData> {
+  async *categories(limit = Infinity): AsyncGenerator<Partial<PageData>> {
     for await (
-      const category of this.#fetchAll<WP_REST_API_Term>("categories")
+      const category of this.#fetchAll<WP_REST_API_Term>("categories", limit)
     ) {
       yield termToData(category, this.#prefix);
     }
   }
 
   /** Returns all tags of the site */
-  async *tags(): AsyncGenerator<PageData> {
-    for await (const tag of this.#fetchAll<WP_REST_API_Term>("tags")) {
+  async *tags(limit = Infinity): AsyncGenerator<Partial<PageData>> {
+    for await (const tag of this.#fetchAll<WP_REST_API_Term>("tags", limit)) {
       yield termToData(tag, this.#prefix);
     }
   }
 
   /** Returns all authors of the site */
-  async *authors(): AsyncGenerator<PageData> {
-    for await (const user of this.#fetchAll<WP_REST_API_User>("users")) {
+  async *authors(limit = Infinity): AsyncGenerator<Partial<PageData>> {
+    for await (const user of this.#fetchAll<WP_REST_API_User>("users", limit)) {
       yield userToData(user, this.#prefix);
     }
   }
 
   /** Returns all media of the site */
-  async *media(): AsyncGenerator<PageData> {
-    for await (const media of this.#fetchAll<WP_REST_API_Attachment>("media")) {
+  async *media(limit = Infinity): AsyncGenerator<Partial<PageData>> {
+    for await (
+      const media of this.#fetchAll<WP_REST_API_Attachment>("media", limit)
+    ) {
       yield mediaToData(media, this.#prefix);
     }
   }
 
-  async *#fetchAll<T>(path: string): AsyncGenerator<T> {
+  async *#fetchAll<T>(path: string, limit = Infinity): AsyncGenerator<T> {
+    const max_per_page = 100;
     let page = 1;
-    const per_page = 100;
+    let counter = 0;
 
-    while (true) {
+    while (limit > counter) {
+      const per_page = Math.min(limit - counter, max_per_page);
+      counter += per_page;
       const posts = await this.#fetch<T>(
         `${path}?per_page=${per_page}&page=${page++}`,
       );
@@ -108,7 +113,7 @@ export class WordPressAPI {
         yield post;
       }
 
-      if (posts.length < per_page) {
+      if (posts.length < max_per_page) {
         break;
       }
     }
@@ -120,7 +125,7 @@ export class WordPressAPI {
   }
 }
 
-function postToData(post: WP_REST_API_Post, prefix: string): PageData {
+function postToData(post: WP_REST_API_Post, prefix: string): Partial<PageData> {
   return {
     id: post.id,
     url: new URL(post.link).pathname,
@@ -137,7 +142,7 @@ function postToData(post: WP_REST_API_Post, prefix: string): PageData {
   };
 }
 
-function pageToData(post: WP_REST_API_Post, prefix: string): PageData {
+function pageToData(post: WP_REST_API_Post, prefix: string): Partial<PageData> {
   return {
     id: post.id,
     url: new URL(post.link).pathname,
@@ -151,7 +156,7 @@ function pageToData(post: WP_REST_API_Post, prefix: string): PageData {
   };
 }
 
-function termToData(term: WP_REST_API_Term, prefix: string): PageData {
+function termToData(term: WP_REST_API_Term, prefix: string): Partial<PageData> {
   return {
     id: term.id,
     url: new URL(term.link).pathname,
@@ -163,7 +168,7 @@ function termToData(term: WP_REST_API_Term, prefix: string): PageData {
   };
 }
 
-function userToData(term: WP_REST_API_User, prefix: string): PageData {
+function userToData(term: WP_REST_API_User, prefix: string): Partial<PageData> {
   return {
     id: term.id,
     url: new URL(term.link).pathname,
@@ -175,7 +180,10 @@ function userToData(term: WP_REST_API_User, prefix: string): PageData {
   };
 }
 
-function mediaToData(media: WP_REST_API_Attachment, prefix: string): PageData {
+function mediaToData(
+  media: WP_REST_API_Attachment,
+  prefix: string,
+): Partial<PageData> {
   return {
     id: media.id,
     url: new URL(media.source_url).pathname,
