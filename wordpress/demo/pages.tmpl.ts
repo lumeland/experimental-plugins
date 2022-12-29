@@ -12,6 +12,7 @@ export default async function* ({ wp }) {
     yield { ...page, layout: "category.njk" };
   }
   for await (const page of wp.pages()) {
+    if (page.url === "/") continue; // Skip the home page (it's already generated)
     yield { ...page, layout: "page.njk" };
   }
 }

@@ -1,0 +1,38 @@
+---
+layout: base.njk
+---
+
+<h2>Pages</h2>
+<ul>
+  {% for item in search.pages("type=page", "id") %}
+  <li><a href="{{ item.data.url }}">{{ item.data.id }} - {{ item.data.title }}</a></li>
+  {% endfor %}
+</ul>
+
+<h2>Categories</h2>
+<ul>
+  {% for item in search.pages("type=category", "id") %}
+  <li><a href="{{ item.data.url }}">{{ item.data.id }} - {{ item.data.title }}</a></li>
+  {% endfor %}
+</ul>
+
+<h2>Tags</h2>
+<ul>
+  {% for item in search.pages("type=tag", "id") %}
+  <li><a href="{{ item.data.url }}">{{ item.data.id }} - {{ item.data.title }}</a></li>
+  {% endfor %}
+</ul>
+
+<h2>Authors</h2>
+<ul>
+  {% for item in search.pages("type=author", "id") %}
+  <li><a href="{{ item.data.url }}">{{ item.data.id }} - {{ item.data.title }}</a></li>
+  {% endfor %}
+</ul>
+
+<h2>Posts</h2>
+<ul>
+  {% for item in search.pages("type=post", "id") %}
+  <li><a href="{{ item.data.url }}">{{ item.data.id }} - {{ item.data.title }}</a></li>
+  {% endfor %}
+</ul>

@@ -4,22 +4,22 @@ layout: base.njk
 <article>
   <header>
     <h1>{{ title }}</h1>
-
+{{ author_id }}
     {% if author %}
     By: <a href="{{ author.url }}">{{ author.name }}</a>
     {% endif %}
 
-    {% if category.length %}
+    {% if categories.length %}
       Categories:
-      {% for item in category %}
-      <a href="{{ item.url }}">{{ item.name }}</a>
+      {% for category in categories %}
+      <a href="{{ category.url }}">{{ category.name }}</a>
       {% endfor %}
     {% endif %}
   
-    {% if post_tag.length %}
+    {% if tags.length %}
       Tags:
-      {% for item in category %}
-      <a href="{{ item.url }}">{{ item.name }}</a>
+      {% for tag in tags %}
+      <a href="{{ tag.url }}">{{ tag.name }}</a>
       {% endfor %}
     {% endif %}
   </header>

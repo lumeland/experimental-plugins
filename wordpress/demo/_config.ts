@@ -5,15 +5,31 @@ import wordpress from "../mod.ts";
 const site = lume();
 site.use(relations({
   foreignKeys: {
-    wp_post: "wp_post_id",
-    wp_tag: "wp_tag_id",
-    wp_author: "wp_author_id",
-    wp_category: "wp_category_id",
-    wp_page: "wp_page_id",
+    post: {
+      foreignKey: "post_id",
+      pluralRelationKey: "posts",
+    },
+    tag: {
+      foreignKey: "tag_id",
+      pluralRelationKey: "tags",
+    },
+    author: {
+      foreignKey: "author_id",
+      pluralRelationKey: "authors",
+    },
+    category: {
+      foreignKey: "category_id",
+      pluralRelationKey: "categories",
+    },
+    page: {
+      foreignKey: "page_id",
+      pluralRelationKey: "pages",
+    },
   },
 }));
 site.use(wordpress({
   wp_url: "https://blog.oscarotero.com",
+  limit: 100,
 }));
 
 export default site;
