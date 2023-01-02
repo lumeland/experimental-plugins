@@ -1,4 +1,5 @@
 import lume from "lume/mod.ts";
+import postcss from "lume/plugins/postcss.ts";
 import tailwind from "../mod.ts";
 
 const site = lume({
@@ -10,7 +11,7 @@ site.use(tailwind({
     important: true,
   },
 }));
-
+site.use(postcss());
 site.loadPages([".html"]);
 
 export default site;
