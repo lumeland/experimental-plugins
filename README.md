@@ -6,6 +6,10 @@ A repo to test and experiment with plugins for Lume
 
 Middleware to add csp headers.
 
+## Nav
+
+To build navigation menus and breadcrumbs.
+
 ## NanoJSX
 
 To use [Nano JSX](https://nanojsx.io/) to render JSX pages.

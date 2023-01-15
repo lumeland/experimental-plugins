@@ -1,0 +1,13 @@
+{% if item.index %}
+<a href="{{ item.index.url }}">{{ item.index.title }}</a>
+{% endif %}
+
+{% if item.children %}
+<ul>
+  {% for name, item in item.children %}
+  <li>
+    {% include "./step.njk" %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
