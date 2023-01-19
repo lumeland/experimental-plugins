@@ -53,7 +53,14 @@ export class Nav {
       index: undefined,
     };
 
-    for (const page of this.#site.pages) {
+    const page404 = this.#site.options.server.page404;
+
+    const pages = this.#site.pages.filter((page) =>
+      page.outputPath?.endsWith(".html") &&
+      page.data.url != page404
+    );
+
+    for (const page of pages) {
       const url = page.outputPath;
       if (!url) {
         continue;
@@ -75,7 +82,6 @@ export class Nav {
         if (!current.children[part]) {
           current = current.children[part] = {
             index: undefined,
-            children: {},
             parent: current,
           };
         } else {
@@ -84,7 +90,6 @@ export class Nav {
         part = parts.shift();
       }
     }
-
     return nav;
   }
 }
