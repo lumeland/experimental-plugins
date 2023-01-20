@@ -62,10 +62,7 @@ export class Nav {
 
     for (const page of pages) {
       const url = page.outputPath;
-      console.log({
-        outputPath: page.outputPath,
-        url: page.data.url,
-      });
+
       if (!url) {
         continue;
       }
@@ -98,7 +95,6 @@ export class Nav {
         part = parts.shift();
       }
     }
-    console.log(nav);
     return nav;
   }
 }
