@@ -37,12 +37,12 @@ export class Nav {
     return this.#nav;
   }
 
-  breadcrumb(url: string): Data[] {
+  breadcrumb(url: string): NavData[] {
     let nav = searchData(url, this.menu());
-    const breadcrumb: Data[] = [];
+    const breadcrumb: NavData[] = [];
 
-    while (nav?.index) {
-      breadcrumb.unshift(nav.index);
+    while (nav) {
+      breadcrumb.unshift(nav);
       nav = nav.parent;
     }
     return breadcrumb;
@@ -50,7 +50,7 @@ export class Nav {
 
   #buildNav(): NavData {
     const nav: NavData = {
-      index: undefined,
+      title: "index",
     };
 
     const page404 = this.#site.options.server.page404;
@@ -62,6 +62,10 @@ export class Nav {
 
     for (const page of pages) {
       const url = page.outputPath;
+      console.log({
+        outputPath: page.outputPath,
+        url: page.data.url,
+      });
       if (!url) {
         continue;
       }
@@ -72,7 +76,11 @@ export class Nav {
 
       while (part) {
         if (part === "index.html") {
-          current.index = page.data;
+          if (page.data.title) {
+            current.title = page.data.title;
+          }
+          current.url = page.data.url as string;
+          current.data = page.data;
           break;
         }
         if (!current.children) {
@@ -81,7 +89,7 @@ export class Nav {
 
         if (!current.children[part]) {
           current = current.children[part] = {
-            index: undefined,
+            title: part,
             parent: current,
           };
         } else {
@@ -90,18 +98,21 @@ export class Nav {
         part = parts.shift();
       }
     }
+    console.log(nav);
     return nav;
   }
 }
 
 export interface NavData {
-  index?: Data;
+  title: string;
+  url?: string;
+  data?: Data;
   children?: Record<string, NavData>;
   parent?: NavData;
 }
 
 function searchData(url: string, menu: NavData): NavData | undefined {
-  if (menu.index?.url === url) {
+  if (menu.url === url) {
     return menu;
   }
   if (menu.children) {

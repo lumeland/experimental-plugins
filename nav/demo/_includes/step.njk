@@ -1,5 +1,7 @@
-{% if item.index %}
-<a href="{{ item.index.url }}">{{ item.index.title }}</a>
+{% if item.url %}
+<a href="{{ item.url }}">{{ item.title }}</a>
+{% else %}
+<strong>{{ item.title }}</strong>
 {% endif %}
 
 {% if item.children %}
