@@ -49,7 +49,7 @@ export class Nav {
   }
 
   #buildNav(): NavData {
-    const nav: NavData = {
+    const nav: TempNavData = {
       title: "index",
     };
 
@@ -95,7 +95,8 @@ export class Nav {
         part = parts.shift();
       }
     }
-    return nav;
+
+    return convert(nav);
   }
 }
 
@@ -103,20 +104,44 @@ export interface NavData {
   title: string;
   url?: string;
   data?: Data;
-  children?: Record<string, NavData>;
+  children?: NavData[];
   parent?: NavData;
+}
+
+interface TempNavData {
+  title: string;
+  url?: string;
+  data?: Data;
+  children?: Record<string, TempNavData>;
+  parent?: TempNavData;
 }
 
 function searchData(url: string, menu: NavData): NavData | undefined {
   if (menu.url === url) {
     return menu;
   }
-  if (menu.children) {
-    for (const child of Object.values(menu.children)) {
+  if (menu.children?.length) {
+    for (const child of menu.children) {
       const result = searchData(url, child);
       if (result) {
         return result;
       }
     }
   }
+}
+
+// Convert TempNavData to NavData
+function convert(temp: TempNavData, parent?: NavData): NavData {
+  const data: NavData = {
+    title: temp.title,
+    url: temp.url,
+    data: temp.data,
+    parent,
+  };
+
+  data.children = temp.children
+    ? Object.values(temp.children).map((child) => convert(child, data))
+    : undefined;
+
+  return data;
 }

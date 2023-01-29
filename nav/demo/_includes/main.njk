@@ -16,7 +16,7 @@
 
     <nav>
       <ul>
-      {% for name, item in nav.menu().children %}
+      {% for item in nav.menu().children %}
         <li>
           {% include "./step.njk" %}
         </li>
