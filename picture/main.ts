@@ -4,13 +4,15 @@ import { typeByExtension } from "lume/deps/media_types.ts";
 
 import type { Transformation } from "lume/plugins/imagick.ts";
 import type { MagickFormat } from "lume/deps/imagick.ts";
-import type { Element } from "lume/deps/dom.ts";
+import type { Document, Element } from "lume/deps/dom.ts";
 import type { Plugin, Site } from "lume/core.ts";
 
 interface SourceFormat {
-  size: string;
+  width: number;
+  scales: Record<string, number>;
   format: string;
 }
+
 interface Source extends SourceFormat {
   paths: string[];
 }
@@ -48,17 +50,20 @@ export default function (): Plugin {
     site.process("*", (page) => {
       const path = page.outputPath!;
 
-      for (const { paths, size, format } of transforms.values()) {
-        if (paths.includes(path)) {
-          const imagick: Transformation[] = page.data.imagick
-            ? Array.isArray(page.data.imagick)
-              ? page.data.imagick
-              : [page.data.imagick]
-            : (page.data.imagick = []);
+      for (const { paths, width, scales, format } of transforms.values()) {
+        if (!paths.includes(path)) {
+          continue;
+        }
+        const imagick: Transformation[] = page.data.imagick
+          ? Array.isArray(page.data.imagick)
+            ? page.data.imagick
+            : [page.data.imagick]
+          : (page.data.imagick = []);
 
+        for (const [suffix, scale] of Object.entries(scales)) {
           imagick.push({
-            resize: parseInt(size),
-            suffix: `-${size}`,
+            resize: width * scale,
+            suffix,
             format: format as MagickFormat,
           });
         }
@@ -69,12 +74,12 @@ export default function (): Plugin {
       const img = picture.querySelector("img");
       const imagick = picture.getAttribute("imagick");
 
-      if (!img) {
-        throw new Error("picture element must have an img child");
+      if (!imagick) {
+        return;
       }
 
-      if (!imagick) {
-        throw new Error("picture element must have a imagick attribute");
+      if (!img) {
+        throw new Error("picture element must have an img child");
       }
 
       const src = img.getAttribute("src");
@@ -85,10 +90,8 @@ export default function (): Plugin {
 
       const sourceFormats = saveTransform(basePath, src, imagick);
 
-      for (const { size, format } of sourceFormats) {
-        const source = img.ownerDocument!.createElement("source");
-        source.setAttribute("srcset", getName(src, format, `-${size}`));
-        source.setAttribute("type", typeByExtension(format));
+      for (const sourceFormat of sourceFormats) {
+        const source = createSource(img.ownerDocument!, src, sourceFormat);
         picture.insertBefore(source, img);
       }
     }
@@ -97,23 +100,20 @@ export default function (): Plugin {
       const src = img.getAttribute("src");
       const imagick = img.getAttribute("imagick");
 
+      if (!imagick) {
+        return;
+      }
+
       if (!src) {
         throw new Error("img element must have a src attribute");
       }
 
-      if (!imagick) {
-        throw new Error("img element must have a imagick attribute");
-      }
-
       const sourceFormats = saveTransform(basePath, src, imagick);
-
       const picture = img.ownerDocument!.createElement("picture");
       img.replaceWith(picture);
 
-      for (const { size, format } of sourceFormats) {
-        const source = img.ownerDocument!.createElement("source");
-        source.setAttribute("srcset", getName(src, format, `-${size}`));
-        source.setAttribute("type", typeByExtension(format));
+      for (const sourceFormat of sourceFormats) {
+        const source = createSource(img.ownerDocument!, src, sourceFormat);
         picture.append(source);
       }
 
@@ -129,8 +129,8 @@ export default function (): Plugin {
       const sizes: string[] = [];
       const formats: string[] = [];
 
-      imagick.split(/\W+/).forEach((piece) => {
-        if (piece.match(/^\d+w$/)) {
+      imagick.split(/\s+/).forEach((piece) => {
+        if (piece.match(/^\d/)) {
           sizes.push(piece);
         } else {
           formats.push(piece);
@@ -140,19 +140,36 @@ export default function (): Plugin {
       const sourceFormats: SourceFormat[] = [];
 
       for (const size of sizes) {
-        for (const format of formats) {
-          const key = `${size}:${format}`;
-          const transform = transforms.get(key);
-          const sourceFormat = { size, format };
+        const [width, scales] = parseSize(size);
 
+        for (const format of formats) {
+          const key = `${width}:${format}`;
+          const sourceFormat = {
+            width,
+            format,
+            scales: {} as Record<string, number>,
+          };
           sourceFormats.push(sourceFormat);
 
-          if (transform && !transform.paths.includes(path)) {
-            transform.paths.push(path);
-            continue;
+          for (const scale of scales) {
+            const suffix = `-${width}w${scale === 1 ? "" : `@${scale}`}`;
+            sourceFormat.scales[suffix] = scale;
           }
 
-          transforms.set(key, { paths: [path], ...sourceFormat });
+          const transform = transforms.get(key);
+
+          if (transform) {
+            if (!transform.paths.includes(path)) {
+              transform.paths.push(path);
+            }
+
+            Object.assign(transform.scales, sourceFormat.scales);
+          } else {
+            transforms.set(key, {
+              ...sourceFormat,
+              paths: [path],
+            });
+          }
         }
       }
 
@@ -161,16 +178,37 @@ export default function (): Plugin {
   };
 }
 
-function getName(url: string, format: string, suffix: string): string {
-  let [path, ext] = getPathAndExtension(url);
+function parseSize(size: string): [number, number[]] {
+  const match = size.match(/^(\d+)(@([\d.,]+))?$/);
 
-  if (format) {
-    ext = `.${format}`;
+  if (!match) {
+    throw new Error(`Invalid size: ${size}`);
   }
 
-  if (suffix) {
-    path += suffix;
+  const [, width, , scales] = match;
+
+  return [
+    parseInt(width),
+    scales?.split(",").map((s) => parseFloat(s)) || [1],
+  ];
+}
+
+function createSource(
+  document: Document,
+  src: string,
+  srcFormat: SourceFormat,
+) {
+  const source = document.createElement("source");
+  const { scales, format } = srcFormat;
+  const [path] = getPathAndExtension(src);
+  const srcset: string[] = [];
+
+  for (const [suffix, scale] of Object.entries(scales)) {
+    const scaleSuffix = scale === 1 ? "" : ` ${scale}x`;
+    srcset.push(`${path}${suffix}.${format}${scaleSuffix}`);
   }
 
-  return path + ext;
+  source.setAttribute("srcset", srcset.join(", "));
+  source.setAttribute("type", typeByExtension(format));
+  return source;
 }
