@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+  <title>Demo</title>
+</head>
+
+<body>
+  {# <div imagick="webp,jpg | 1x,300w,2x">
+    <!-- All images here will be affected -->
+  </div>
+   #}
+
+  <picture imagick="webp jpg 600w">
+    <img src="/kevin-schmid-unsplash.jpg">
+  </picture>
+
+  <!-- This image will be converted to a picture -->
+  <img src="/kevin-schmid-unsplash.jpg" imagick="webp jpg 300w">
+</body>
+</html>
