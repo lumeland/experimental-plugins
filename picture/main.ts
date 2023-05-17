@@ -29,21 +29,28 @@ export default function (): Plugin {
       }
 
       const basePath = posix.dirname(page.outputPath!);
-      const nodeList = document.querySelectorAll("[imagick]");
+      const nodeList = document.querySelectorAll("img");
 
       for (const node of nodeList) {
-        const element = node as Element;
+        const img = node as Element;
+        const imagick = closest(img, "[imagick]")?.getAttribute("imagick");
 
-        switch (element.tagName) {
-          case "IMG":
-            handleImg(element, basePath);
-            break;
-          case "PICTURE":
-            handlePicture(element, basePath);
-            break;
+        if (!imagick) {
+          continue;
         }
 
-        element.removeAttribute("imagick");
+        if (!img.getAttribute("src")) {
+          throw new Error("img element must have a src attribute");
+        }
+
+        const picture = closest(img, "picture");
+
+        if (picture) {
+          handlePicture(imagick, img, picture, basePath);
+          continue;
+        }
+
+        handleImg(imagick, img, basePath);
       }
     });
 
@@ -70,24 +77,13 @@ export default function (): Plugin {
       }
     });
 
-    function handlePicture(picture: Element, basePath: string) {
-      const img = picture.querySelector("img");
-      const imagick = picture.getAttribute("imagick");
-
-      if (!imagick) {
-        return;
-      }
-
-      if (!img) {
-        throw new Error("picture element must have an img child");
-      }
-
-      const src = img.getAttribute("src");
-
-      if (!src) {
-        throw new Error("img element must have a src attribute");
-      }
-
+    function handlePicture(
+      imagick: string,
+      img: Element,
+      picture: Element,
+      basePath: string,
+    ) {
+      const src = img.getAttribute("src") as string;
       const sourceFormats = saveTransform(basePath, src, imagick);
 
       for (const sourceFormat of sourceFormats) {
@@ -96,20 +92,11 @@ export default function (): Plugin {
       }
     }
 
-    function handleImg(img: Element, basePath: string) {
-      const src = img.getAttribute("src");
-      const imagick = img.getAttribute("imagick");
-
-      if (!imagick) {
-        return;
-      }
-
-      if (!src) {
-        throw new Error("img element must have a src attribute");
-      }
-
+    function handleImg(imagick: string, img: Element, basePath: string) {
+      const src = img.getAttribute("src") as string;
       const sourceFormats = saveTransform(basePath, src, imagick);
       const picture = img.ownerDocument!.createElement("picture");
+
       img.replaceWith(picture);
 
       for (const sourceFormat of sourceFormats) {
@@ -187,9 +174,13 @@ function parseSize(size: string): [number, number[]] {
 
   const [, width, , scales] = match;
 
+  // Use a Set to avoid duplicates
+  const sizes = new Set<number>([1]);
+  scales?.split(",").forEach((size) => sizes.add(parseFloat(size)));
+
   return [
     parseInt(width),
-    scales?.split(",").map((s) => parseFloat(s)) || [1],
+    [...sizes.values()],
   ];
 }
 
@@ -211,4 +202,12 @@ function createSource(
   source.setAttribute("srcset", srcset.join(", "));
   source.setAttribute("type", typeByExtension(format));
   return source;
+}
+
+// Missing Element.closest in Deno DOM (https://github.com/b-fuze/deno-dom/issues/99)
+function closest(element: Element, selector: string) {
+  while (element && !element.matches(selector)) {
+    element = element.parentElement!;
+  }
+  return element;
 }
