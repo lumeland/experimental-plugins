@@ -34,3 +34,7 @@ Estimated reading time for markdown pages.
 ## WebC
 
 To use [WebC](https://github.com/11ty/webc) components in the templates.
+
+## Favicon
+
+To generate automatically the site's favicon.
