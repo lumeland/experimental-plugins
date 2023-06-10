@@ -1,17 +1,14 @@
-import engine from "https://deno.land/x/vento@v0.1.0/mod.ts";
-import { FileLoader } from "https://deno.land/x/vento@v0.1.0/src/loader.ts";
+import engine from "https://deno.land/x/vento@v0.2.0/mod.ts";
+import { FileLoader } from "https://deno.land/x/vento@v0.2.0/src/loader.ts";
 import loader from "lume/core/loaders/text.ts";
 import { merge } from "lume/core/utils.ts";
 
-import type { Environment } from "https://deno.land/x/vento@v0.1.0/src/environment.ts";
+import type { Environment } from "https://deno.land/x/vento@v0.2.0/src/environment.ts";
 import type { Data, Engine, FS, Helper, Site } from "lume/core.ts";
 
 export interface Options {
   /** The list of extensions this plugin applies to */
-  extensions: string[] | {
-    pages: string[];
-    components: string[];
-  };
+  extensions: string[];
 }
 
 // Default options
@@ -46,7 +43,6 @@ class LumeLoader extends FileLoader {
 /** Template engine to render JSX files using NanoJSX */
 export class VentoEngine implements Engine {
   engine: Environment;
-  helpers: Record<string, Helper> = {};
 
   constructor(fs: FS) {
     this.engine = engine({
@@ -58,16 +54,16 @@ export class VentoEngine implements Engine {
     this.engine.cache.delete(file);
   }
 
-  async render(content: unknown, data: Data = {}, filename: string) {
-    return this.engine.run(filename, data);
+  render(content: string, data: Data = {}, filename?: string) {
+    return this.engine.runString(content, data, filename);
   }
 
-  renderSync(content: unknown, data: Data = {}): string {
+  renderSync(): string {
     throw new Error("Not implemented");
   }
 
   addHelper(name: string, fn: Helper) {
-    this.helpers[name] = fn;
+    this.engine.filters[name] = fn;
   }
 }
 
