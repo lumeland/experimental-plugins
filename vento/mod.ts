@@ -1,4 +1,4 @@
-import engine from "https://deno.land/x/vento@v0.2.0/mod.ts";
+import engine from "https://deno.land/x/vento@v0.3.0/mod.ts";
 import { FileLoader } from "https://deno.land/x/vento@v0.2.0/src/loader.ts";
 import loader from "lume/core/loaders/text.ts";
 import { merge } from "lume/core/utils.ts";
