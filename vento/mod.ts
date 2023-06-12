@@ -1,7 +1,7 @@
 import engine from "https://deno.land/x/vento@v0.3.0/mod.ts";
 import { FileLoader } from "https://deno.land/x/vento@v0.2.0/src/loader.ts";
 import loader from "lume/core/loaders/text.ts";
-import { merge } from "lume/core/utils.ts";
+import { merge, normalizePath } from "lume/core/utils.ts";
 
 import type { Environment } from "https://deno.land/x/vento@v0.2.0/src/environment.ts";
 import type { Data, Engine, FS, Helper, Site } from "lume/core.ts";
@@ -19,8 +19,8 @@ export const defaults: Options = {
 class LumeLoader extends FileLoader {
   fs: FS;
 
-  constructor(fs: FS) {
-    super(fs.options.root);
+  constructor(includes: string, fs: FS) {
+    super(includes);
     this.fs = fs;
   }
 
@@ -44,9 +44,9 @@ class LumeLoader extends FileLoader {
 export class VentoEngine implements Engine {
   engine: Environment;
 
-  constructor(fs: FS) {
+  constructor(site: Site) {
     this.engine = engine({
-      includes: new LumeLoader(fs),
+      includes: new LumeLoader(normalizePath(site.options.includes), site.fs),
     });
   }
 
@@ -75,7 +75,7 @@ export default function (userOptions?: Partial<Options>) {
     : options.extensions;
 
   return (site: Site) => {
-    const engine = new VentoEngine(site.fs);
+    const engine = new VentoEngine(site);
 
     site.loadPages(extensions.pages, loader, engine);
     site.loadComponents(extensions.components, loader, engine);
