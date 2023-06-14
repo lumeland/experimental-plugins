@@ -1,9 +1,9 @@
-import engine from "https://deno.land/x/vento@v0.3.0/mod.ts";
-import { FileLoader } from "https://deno.land/x/vento@v0.2.0/src/loader.ts";
+import engine from "https://deno.land/x/vento@v0.3.1/mod.ts";
+import { FileLoader } from "https://deno.land/x/vento@v0.3.1/src/loader.ts";
 import loader from "lume/core/loaders/text.ts";
 import { merge, normalizePath } from "lume/core/utils.ts";
 
-import type { Environment } from "https://deno.land/x/vento@v0.2.0/src/environment.ts";
+import type { Environment } from "https://deno.land/x/vento@v0.3.1/src/environment.ts";
 import type { Data, Engine, FS, Helper, Site } from "lume/core.ts";
 
 export interface Options {
