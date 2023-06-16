@@ -1,5 +1,5 @@
-import engine from "https://deno.land/x/vento@v0.3.1/mod.ts";
-import { FileLoader } from "https://deno.land/x/vento@v0.3.1/src/loader.ts";
+import engine from "https://deno.land/x/vento@v0.4.0/mod.ts";
+import { FileLoader } from "https://deno.land/x/vento@v0.4.0/src/loader.ts";
 import loader from "lume/core/loaders/text.ts";
 import { merge, normalizePath } from "lume/core/utils.ts";
 
