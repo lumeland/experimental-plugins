@@ -4,6 +4,7 @@ import loader from "lume/core/loaders/text.ts";
 import { merge, normalizePath } from "lume/core/utils.ts";
 
 import type { Environment } from "https://deno.land/x/vento@v0.3.1/src/environment.ts";
+import type { Token } from "https://deno.land/x/vento@v0.3.1/src/tokenizer.ts";
 import type { Data, Engine, FS, Helper, Site } from "lume/core.ts";
 
 export interface Options {
@@ -48,6 +49,7 @@ export class VentoEngine implements Engine {
     this.engine = engine({
       includes: new LumeLoader(normalizePath(site.options.includes), site.fs),
     });
+    this.engine.tags.push(compTag);
   }
 
   deleteCache(file: string) {
@@ -80,4 +82,47 @@ export default function (userOptions?: Partial<Options>) {
     site.loadPages(extensions.pages, loader, engine);
     site.loadComponents(extensions.components, loader, engine);
   };
+}
+
+function compTag(
+  env: Environment,
+  code: string,
+  output: string,
+  tokens: Token[],
+): string | undefined {
+  if (!code.startsWith("comp.")) {
+    return;
+  }
+
+  const match = code?.match(
+    /^comp.([\w.]+)(?:\s+(\{.*\}))?(?:\s+(\/))?$/,
+  );
+
+  if (!match) {
+    throw new Error(`Invalid component tag: ${code}`);
+  }
+
+  const [_, comp, args, close] = match;
+
+  if (close) {
+    return `${output} += await comp.${comp}(${args || ""});`;
+  }
+
+  const compiled: string[] = [];
+  compiled.push("{");
+  compiled.push(`let __content = ""`);
+  compiled.push(...env.compileTokens(tokens, "__content", ["/comp"]));
+
+  if (tokens.length && (tokens[0][0] !== "tag" || tokens[0][1] !== "/comp")) {
+    throw new Error(`Missing closing tag for component tag: ${code}`);
+  }
+
+  tokens.shift();
+  compiled.push(
+    `${output} += await comp.${comp}({...${
+      args || "{}"
+    }, content: __content});`,
+  );
+  compiled.push("}");
+  return compiled.join("\n");
 }
