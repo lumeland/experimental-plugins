@@ -1,8 +1,12 @@
 import type { DeepPartial, Site } from "lume/core.ts";
 import { merge } from "lume/core/utils.ts";
 
-import { UnoGenerator, type UserConfig as Options } from "npm:@unocss/core@0.53.5";
+import { UnoGenerator, type UserConfig } from "npm:@unocss/core@0.53.5";
 import presetUno from "npm:@unocss/preset-uno@0.53.5";
+
+export interface Options extends UserConfig {
+  reset?: false | "tailwind";
+}
 
 // import reset from "npm:@unocss/reset@0.53.5/tailwind.css" assert { type: "css" };
 /**
@@ -15,6 +19,7 @@ const reset =
 
 export const defaults: Options = {
   presets: [presetUno()],
+  reset: "tailwind",
 };
 
 export default (userOptions: DeepPartial<Options> = {}) => {
@@ -30,7 +35,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
 
       if (css) {
         const style = page.document!.createElement("style");
-        style.innerText = reset + css;
+        style.innerText = options.reset === "tailwind" ? reset + css : css;
         page.document?.head?.appendChild(style);
       }
     });
