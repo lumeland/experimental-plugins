@@ -4,7 +4,7 @@ import { merge } from "lume/core/utils.ts";
 import { UnoGenerator, type UserConfig as Options } from "npm:@unocss/core@0.53.5";
 import presetUno from "npm:@unocss/preset-uno@0.53.5";
 
-// import reset from "npm:@unocss/reset@0.53.5/tailwind.css" assert { type: 'css' }
+// import reset from "npm:@unocss/reset@0.53.5/tailwind.css" assert { type: "css" };
 /**
  * Deno does not currently support CSS Modules.
  * @see {@link https://github.com/denoland/deno/issues/11961}
