@@ -2,7 +2,7 @@ import type { DeepPartial, Site } from "lume/core.ts";
 import { merge } from "lume/core/utils.ts";
 
 import { UnoGenerator, type UserConfig } from "npm:@unocss/core@0.53.5";
-import presetUno from "npm:@unocss/preset-uno@0.53.5";
+import { presetUno } from "npm:@unocss/preset-uno@0.53.5";
 
 export interface Options {
   config?: UserConfig;
