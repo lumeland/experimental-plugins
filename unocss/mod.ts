@@ -37,9 +37,15 @@ export default (userOptions: DeepPartial<Options> = {}) => {
         page.document?.documentElement?.innerHTML ?? '',
       );
 
+      if (options.reset !== false) {
+        const style = page.document!.createElement("style");
+        style.innerText = reset[options.reset];
+        page.document?.head?.appendChild(style);
+      }
+
       if (css) {
         const style = page.document!.createElement("style");
-        style.innerText = options.reset !== false ? reset[options.reset] + css : css;
+        style.innerText = css;
         page.document?.head?.appendChild(style);
       }
     });
