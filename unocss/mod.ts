@@ -33,7 +33,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
   return (site: Site) => {
     site.process([".html"], async (page) => {
       const { css } = await uno.generate(
-        page.document?.documentElement?.innerHTML,
+        page.document?.documentElement?.innerHTML ?? '',
       );
 
       if (css) {
