@@ -13,6 +13,7 @@ export interface Options {
   /**
    * Supported CSS reset options.
    * @see {@link https://github.com/unocss/unocss/tree/v0.53.5/packages/reset}
+   * @defaultValue `tailwind`
    */
   reset: false | "tailwind" | "tailwind-compat" | "eric-meyer";
 }
