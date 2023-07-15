@@ -5,7 +5,10 @@ import { UnoGenerator, type UserConfig } from "npm:@unocss/core@0.53.5";
 import { presetUno } from "npm:@unocss/preset-uno@0.53.5";
 
 export interface Options {
-  /** UnoCSS Config */
+  /**
+   * Configurations for UnoCSS.
+   * @see {@link https://unocss.dev/guide/config-file}
+   */
   config?: UserConfig;
   /**
    * Supported CSS reset options.
