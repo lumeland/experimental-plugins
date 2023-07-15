@@ -3,7 +3,7 @@ import unocss from "../mod.ts";
 
 const site = lume();
 site.use(unocss({
-  cssFile: 'uno.css'
+  cssFile: "uno.css",
 }));
 
 export default site;
