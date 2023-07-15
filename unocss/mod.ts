@@ -2,7 +2,7 @@ import type { DeepPartial, Site } from "lume/core.ts";
 import { merge, read } from "lume/core/utils.ts";
 import { Page } from "lume/core/filesystem.ts";
 
-import { UnoGenerator, type UserConfig } from "npm:@unocss/core@0.53.5";
+import { createGenerator, type UserConfig } from "npm:@unocss/core@0.53.5";
 import { presetUno } from "npm:@unocss/preset-uno@0.53.5";
 
 export interface Options {
@@ -48,7 +48,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
     )}\n${css}`;
 
   return (site: Site) => {
-    const uno = new UnoGenerator(options.config);
+    const uno = createGenerator(options.config);
 
     if (options.cssFile === false) {
       // Insert a <style> tag for each page
