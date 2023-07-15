@@ -1,5 +1,6 @@
 import type { DeepPartial, Site } from "lume/core.ts";
 import { merge, read } from "lume/core/utils.ts";
+import { Page } from "lume/core/filesystem.ts";
 
 import { UnoGenerator, type UserConfig } from "npm:@unocss/core@0.53.5";
 import { presetUno } from "npm:@unocss/preset-uno@0.53.5";
@@ -35,29 +36,25 @@ export const defaults: Options = {
 export default (userOptions: DeepPartial<Options> = {}) => {
   const options = merge(defaults, userOptions) as Options;
 
-  return (site: Site) => {
+  /**
+   * TODO: Replace with CSS Modules Import
+   * @remarks Deno does not currently support CSS Modules.
+   * @see {@link https://github.com/denoland/deno/issues/11961}
+   */
+  const prependReset = async (css: string) =>
+    options.reset === false ? css : `${await read(
+      `https://unpkg.com/@unocss/reset@0.53.5/${options.reset}.css`,
+      false,
+    )}\n${css}`;
 
+  return (site: Site) => {
     const uno = new UnoGenerator(options.config);
 
     if (options.cssFile === false) {
       site.process([".html"], async (page) => {
-        const { css } = await uno.generate(
+        const css = await uno.generate(
           page.document?.documentElement?.innerHTML ?? "",
-        );
-
-        if (options.reset !== false) {
-          const style = page.document!.createElement("style");
-          /**
-           * TODO: Replace with CSS Modules Import
-           * @remarks Deno does not currently support CSS Modules.
-           * @see {@link https://github.com/denoland/deno/issues/11961}
-           */
-          style.innerText = await read(
-            `https://unpkg.com/@unocss/reset@0.53.5/${options.reset}.css`,
-            false,
-          );
-          page.document?.head?.appendChild(style);
-        }
+        ).then(({ css }) => prependReset(css));
 
         if (css) {
           const style = page.document!.createElement("style");
@@ -66,9 +63,52 @@ export default (userOptions: DeepPartial<Options> = {}) => {
         }
       });
     } else {
-      site.addEventListener("afterRender", () => {
-        // TODO
-      })
+      site.process([".html"], (page) => {
+        const link = page.document!.createElement("link");
+        link.setAttribute("rel", "stylesheet");
+        link.setAttribute("href", site.url(options.cssFile as string));
+        page.document?.head?.appendChild(link);
+      });
+
+      site.addEventListener("afterRender", async () => {
+        const pages = site.pages
+          .filter((page) => page.outputPath?.endsWith(".html"));
+
+        const fileClassMap = new Map();
+        const classes = new Set<string>();
+
+        await Promise.all(
+          pages.map(async (page) =>
+            fileClassMap.set(
+              page.src,
+              await uno.generate(
+                page.document?.documentElement?.innerHTML ?? "",
+              ).then((res) => res.matched),
+            )
+          ),
+        );
+
+        for (const set of fileClassMap.values()) {
+          for (const candidate of set) {
+            classes.add(candidate);
+          }
+        }
+
+        const css = await uno.generate(classes).then(({ css }) =>
+          prependReset(css)
+        );
+
+        // output css as a page
+        const exists = site.pages.find((page) =>
+          page.data.url === options.cssFile
+        );
+
+        if (exists) {
+          exists.content += `\n${css}`;
+        } else {
+          site.pages.push(Page.create(options.cssFile as string, css));
+        }
+      });
     }
   };
 };
