@@ -74,7 +74,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
 
       // Generate the stylesheets for all pages
       site.processAll([".html"], async (pages) => {
-        const pageClassMap = new Map();
+        const pageClassMap = new Map<string, Set<string>>();
         const classes = new Set<string>();
 
         await Promise.all(
