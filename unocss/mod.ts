@@ -73,10 +73,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
       });
 
       // Generate the stylesheets for all pages
-      site.addEventListener("afterRender", async () => {
-        const pages = site.pages
-          .filter((page) => page.outputPath?.endsWith(".html"));
-
+      site.processAll([".html"], async (pages) => {
         const fileClassMap = new Map();
         const classes = new Set<string>();
 
