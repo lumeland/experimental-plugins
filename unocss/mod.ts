@@ -80,7 +80,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
         await Promise.all(
           pages.map(async (page) =>
             pageClassMap.set(
-              page.src,
+              page.src.slug,
               await uno.generate(
                 page.document?.documentElement?.innerHTML ?? "",
               ).then((res) => res.matched),
