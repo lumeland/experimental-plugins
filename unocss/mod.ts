@@ -74,12 +74,12 @@ export default (userOptions: DeepPartial<Options> = {}) => {
 
       // Generate the stylesheets for all pages
       site.processAll([".html"], async (pages) => {
-        const fileClassMap = new Map();
+        const pageClassMap = new Map();
         const classes = new Set<string>();
 
         await Promise.all(
           pages.map(async (page) =>
-            fileClassMap.set(
+            pageClassMap.set(
               page.src,
               await uno.generate(
                 page.document?.documentElement?.innerHTML ?? "",
@@ -88,7 +88,7 @@ export default (userOptions: DeepPartial<Options> = {}) => {
           ),
         );
 
-        for (const set of fileClassMap.values()) {
+        for (const set of pageClassMap.values()) {
           for (const candidate of set) {
             classes.add(candidate);
           }
