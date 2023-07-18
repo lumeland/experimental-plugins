@@ -74,25 +74,17 @@ export default (userOptions: DeepPartial<Options> = {}) => {
 
       // Generate the stylesheets for all pages
       site.processAll([".html"], async (pages) => {
-        const pageClassMap = new Map<string, Set<string>>();
         const classes = new Set<string>();
 
         await Promise.all(
           pages.map(async (page) =>
-            pageClassMap.set(
-              page.src.slug,
-              await uno.generate(
-                page.document?.documentElement?.innerHTML ?? "",
-              ).then((res) => res.matched),
+            await uno.generate(
+              page.document?.documentElement?.innerHTML ?? "",
             )
+              .then((res) => res.matched)
+              .then((matched) => matched.forEach((match) => classes.add(match)))
           ),
         );
-
-        for (const set of pageClassMap.values()) {
-          for (const candidate of set) {
-            classes.add(candidate);
-          }
-        }
 
         // Create & merge stylesheets for all pages
         const css = await uno.generate(classes).then(({ css }) =>
