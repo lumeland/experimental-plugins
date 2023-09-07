@@ -49,15 +49,15 @@ export interface UIOptions {
   resetStyles: boolean;
 
   /**
-   * New in v1.0.0
+   * Include results from page subsections (based on headings with IDs).
    */
   showSubResults: boolean;
 
   /**
    * The maximum number of characters to show in the excerpt.
-   * @default 0 (no limit)
+   * `0` means no limit
    */
-  excerptLength?: boolean;
+  excerptLength?: number;
 
   /**
    * A set of custom ui strings to use instead of the automatically detected language strings.
@@ -72,7 +72,7 @@ export interface UIOptions {
    * or any other modifications you might like to make to the raw result object
    * returned by Pagefind
    */
-  processResult?: (result: any) => any;
+  processResult?: (result: unknown) => unknown;
 
   /**
    * A function that Pagefind UI calls before performing a search.
@@ -104,6 +104,7 @@ export const defaults: Options = {
   ui: {
     containerId: "search",
     showImages: false,
+    excerptLength: 0,
     showEmptyFilters: true,
     showSubResults: false,
     resetStyles: true,
