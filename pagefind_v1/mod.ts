@@ -1,6 +1,6 @@
 import { merge } from "lume/core/utils.ts";
 import { posix } from "lume/deps/path.ts";
-import * as pagefind from "npm:pagefind@1.0.0-alpha.10";
+import * as pagefind from "npm:pagefind@1.0.0-beta.2";
 
 import type { DeepPartial, Site } from "lume/core.ts";
 import { Page } from "lume/core/filesystem.ts";
@@ -49,6 +49,17 @@ export interface UIOptions {
   resetStyles: boolean;
 
   /**
+   * New in v1.0.0
+   */
+  showSubResults: boolean;
+
+  /**
+   * The maximum number of characters to show in the excerpt.
+   * @default 0 (no limit)
+   */
+  excerptLength?: boolean;
+
+  /**
    * A set of custom ui strings to use instead of the automatically detected language strings.
    * See https://github.com/CloudCannon/pagefind/blob/main/pagefind_ui/translations/en.json for all available keys and initial values.
    * The items in square brackets such as SEARCH_TERM will be substituted dynamically when the text is used.
@@ -56,15 +67,30 @@ export interface UIOptions {
   translations?: TranslationsOptions;
 
   /**
+   * A function that Pagefind UI calls before displaying each result.
+   * This can be used to fix relative URLs, rewrite titles,
+   * or any other modifications you might like to make to the raw result object
+   * returned by Pagefind
+   */
+  processResult?: (result: any) => any;
+
+  /**
    * A function that Pagefind UI calls before performing a search.
    * This can be used to normalize search terms to match your content.
    */
   processTerm?: (term: string) => string;
+
+  /**
+   * The number of milliseconds to wait after a user stops typing before performing a search.
+   * If you wish to disable this, set to 0.
+   * @default 300
+   */
+  debounceTimeoutMs?: number;
 }
 
 export interface Options {
   /** The path to the pagefind bundle directory */
-  bundleDirectory: string;
+  outputPath: string;
 
   /** Options for the UI interface or false to disable it */
   ui: UIOptions | false;
@@ -74,11 +100,12 @@ export interface Options {
 }
 
 export const defaults: Options = {
-  bundleDirectory: "/pagefind",
+  outputPath: "/pagefind",
   ui: {
     containerId: "search",
     showImages: false,
     showEmptyFilters: true,
+    showSubResults: false,
     resetStyles: true,
   },
   indexing: {
@@ -120,8 +147,10 @@ export default function (userOptions?: DeepPartial<Options>) {
       const { files } = await index.getFiles();
 
       for (const file of files) {
-        const url = file.path.replace(/^_pagefind/, options.bundleDirectory);
-        allPages.push(Page.create(url, file.content));
+        const { path, content } = file;
+        allPages.push(
+          Page.create(posix.join("/", options.outputPath, path), content),
+        );
       }
 
       // Cleanup
@@ -143,7 +172,7 @@ export default function (userOptions?: DeepPartial<Options>) {
           styles.setAttribute(
             "href",
             site.url(
-              `${posix.join(options.bundleDirectory, "pagefind-ui.css")}`,
+              `${posix.join(options.outputPath, "pagefind-ui.css")}`,
             ),
           );
 
@@ -162,7 +191,7 @@ export default function (userOptions?: DeepPartial<Options>) {
           script.setAttribute(
             "src",
             site.url(
-              `${posix.join(options.bundleDirectory, "pagefind-ui.js")}`,
+              `${posix.join(options.outputPath, "pagefind-ui.js")}`,
             ),
           );
 
@@ -171,7 +200,7 @@ export default function (userOptions?: DeepPartial<Options>) {
             showImages: ui.showImages,
             showEmptyFilters: ui.showEmptyFilters,
             resetStyles: ui.resetStyles,
-            bundlePath: site.url(posix.join(options.bundleDirectory, "/")),
+            bundlePath: site.url(posix.join(options.outputPath, "/")),
             baseUrl: site.url("/"),
             translations: ui.translations,
             processTerm: ui.processTerm ? ui.processTerm.toString() : undefined,
