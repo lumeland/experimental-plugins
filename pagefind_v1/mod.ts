@@ -1,9 +1,10 @@
 import { merge } from "lume/core/utils.ts";
 import { posix } from "lume/deps/path.ts";
-import * as pagefind from "npm:pagefind@1.0.0-beta.2";
-
-import type { DeepPartial, Site } from "lume/core.ts";
 import { Page } from "lume/core/filesystem.ts";
+import * as pagefind from "npm:pagefind@1.0.0-beta.3";
+
+import type { CustomRecord } from "npm:pagefind@1.0.0-beta.3";
+import type { DeepPartial, Site } from "lume/core.ts";
 
 export interface TranslationsOptions {
   /** English default: "Search" */
@@ -97,6 +98,9 @@ export interface Options {
 
   /** Options for the indexing process */
   indexing: pagefind.PagefindServiceConfig;
+
+  /** Other custom records */
+  customRecords?: CustomRecord[];
 }
 
 export const defaults: Options = {
@@ -133,7 +137,7 @@ export default function (userOptions?: DeepPartial<Options>) {
       // Page indexing
       for (const page of pages) {
         const { errors } = await index.addHTMLFile({
-          path: "." + page.outputPath as string,
+          url: site.url(page.outputPath as string),
           content: page.content as string,
         });
 
@@ -141,6 +145,18 @@ export default function (userOptions?: DeepPartial<Options>) {
           throw new Error(
             `Pagefind index errors for ${page.src.path}:\n${errors.join("\n")}`,
           );
+        }
+      }
+
+      if (options.customRecords) {
+        for (const record of options.customRecords) {
+          const { errors } = await index.addCustomRecord(record);
+
+          if (errors.length > 0) {
+            throw new Error(
+              `Pagefind index errors for custom record:\n${errors.join("\n")}`,
+            );
+          }
         }
       }
 
