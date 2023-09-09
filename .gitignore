@@ -1,3 +1,8 @@
 _site
 _bin
 deno.lock
+
+# Hide all .vscode dir in the repo children dir
+/**/.vscode
+# Do not ignore the top level .vscode dir
+!/.vscode
