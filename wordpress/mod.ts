@@ -1,209 +1,165 @@
+/**
+ * Reference
+ * 
+ * - https://developer.wordpress.org/rest-api/key-concepts
+ */
+
 import { merge } from "lume/core/utils.ts";
 import type { PageData, Site } from "lume/core.ts";
 import {
-  WP_REST_API_Attachment,
-  WP_REST_API_Post,
-  WP_REST_API_Term,
-  WP_REST_API_User,
+    WP_REST_API_Attachment,
+    WP_REST_API_Post,
+    WP_REST_API_Term,
+    WP_REST_API_User,
 } from "npm:wp-types@3.61.0";
 
-export interface WP_Info {
-  name: string;
-  description: string;
-  url: string;
-  home: string;
-  gmt_offset: string;
-  timezone_string: string;
-}
+type QueryParams = Iterable<string[]>
+export type WP_REST_API = WP_REST_API_Attachment | WP_REST_API_Post | WP_REST_API_Term | WP_REST_API_User
 
 export interface Options {
-  wp_url: string;
-  limit: number;
+    wp_url: string;
+    api_namespace: string;
+    // auth?: string | `${string}:${string}`; // Base64 | 'user:pass'
+    limit: number;
+    max_per_page: number;
+    transform: {
+        [key: string]: (raw: WP_REST_API) => Partial<PageData>
+    }
 }
 
 export const defaults: Options = {
-  wp_url: "https://localhost",
-  limit: Infinity,
+    wp_url: "https://localhost",
+    api_namespace: "/wp/v2",
+    // auth: undefined,
+    limit: Infinity,
+    max_per_page: 100,
+    transform: {
+        '*': collectionToData
+    }
 };
 
 export default function (userOptions?: Partial<Options>) {
-  const options = merge(defaults, userOptions);
-  const wp = new WordPressAPI(options);
+    const options = merge(defaults, userOptions);
+    const wp = new WordPressAPI(options);
 
-  return (site: Site) => {
-    site.data("wp", wp);
-  };
+    return (site: Site) => {
+        site.data("wp", wp);
+    };
 }
 
 export class WordPressAPI {
-  #main_endpoint: URL;
-  #api_endpoint: URL;
-  #limit: number;
-  // deno-lint-ignore no-explicit-any
-  #cache = new Map<string, any>();
+    static #api_route = "rest_route";
 
-  constructor(options: Options) {
-    this.#main_endpoint = new URL(options.wp_url);
-    this.#api_endpoint = new URL("./wp-json/wp/v2/", options.wp_url);
-    this.#limit = options.limit;
-  }
+    #base: URL;
+    #api_ns: string;
+    // #pass: string | undefined;
 
-  async info(): Promise<WP_Info> {
-    const res = await fetch(new URL("meta", this.#main_endpoint));
-    return await res.json() as WP_Info;
-  }
+    #limit: number;
+    #max_per_page: number;
 
-  /** Returns all posts of the site */
-  async *posts(limit?: number): AsyncGenerator<Partial<PageData>> {
-    for await (const post of this.#fetchAll<WP_REST_API_Post>("posts", limit)) {
-      yield postToData(post);
-    }
-  }
+    #transform: {
+        [key: string]: (raw: WP_REST_API) => Partial<PageData>
+    };
+    #cache = new Map<string, unknown>();
 
-  /** Returns all pages of the site */
-  async *pages(limit?: number): AsyncGenerator<Partial<PageData>> {
-    for await (const page of this.#fetchAll<WP_REST_API_Post>("pages", limit)) {
-      yield pageToData(page);
-    }
-  }
+    constructor(options: Options) {
+        this.#base = new URL(options.wp_url);
+        this.#api_ns = options.api_namespace;
+        this.#limit = options.limit;
+        this.#max_per_page = options.max_per_page;
 
-  /** Returns all categories of the site */
-  async *categories(limit?: number): AsyncGenerator<Partial<PageData>> {
-    for await (
-      const category of this.#fetchAll<WP_REST_API_Term>("categories", limit)
-    ) {
-      yield termToData(category);
-    }
-  }
+        this.#transform = options.transform
 
-  /** Returns all tags of the site */
-  async *tags(limit?: number): AsyncGenerator<Partial<PageData>> {
-    for await (const tag of this.#fetchAll<WP_REST_API_Term>("tags", limit)) {
-      yield termToData(tag);
-    }
-  }
-
-  /** Returns all authors of the site */
-  async *authors(limit?: number): AsyncGenerator<Partial<PageData>> {
-    for await (const user of this.#fetchAll<WP_REST_API_User>("users", limit)) {
-      yield userToData(user);
-    }
-  }
-
-  /** Returns all media of the site */
-  async *media(limit?: number): AsyncGenerator<Partial<PageData>> {
-    for await (
-      const media of this.#fetchAll<WP_REST_API_Attachment>("media", limit)
-    ) {
-      yield mediaToData(media);
-    }
-  }
-
-  async *#fetchAll<T>(path: string, limit = this.#limit): AsyncGenerator<T> {
-    const max_per_page = 100;
-    let page = 1;
-    let counter = 0;
-
-    while (limit > counter) {
-      const per_page = Math.min(limit - counter, max_per_page);
-      counter += per_page;
-      const posts = await this.#fetch<T>(
-        `${path}?per_page=${per_page}&page=${page++}`,
-      );
-
-      for (const post of posts) {
-        yield post;
-      }
-
-      if (posts.length < max_per_page) {
-        break;
-      }
-    }
-  }
-
-  async #fetch<T>(path: string): Promise<T[]> {
-    const url = new URL(path, this.#api_endpoint);
-    const cacheKey = url.toString();
-
-    if (this.#cache.has(cacheKey)) {
-      return this.#cache.get(cacheKey);
+        // if (options.auth) {
+        //     this.#pass = options.auth.includes(':') ? btoa(options.auth) : options.auth;
+        // }
     }
 
-    const res = await fetch(url);
-    const data = await res.json() as T[];
-    this.#cache.set(cacheKey, data);
-    return data;
-  }
+    async *collection(
+        api_path: string,
+        limit: number = this.#limit,
+        api_namespace: string = this.#api_ns,
+    ): AsyncGenerator<Partial<PageData>> {
+        for await (const raw of this.#fetchAll<WP_REST_API>(api_path, limit, api_namespace)) {
+            const useDefaultNs = this.#transform[api_path]
+            if (typeof useDefaultNs === 'function') {
+                yield useDefaultNs.call(this, raw)
+                continue
+            }
+
+            const longNs = this.#transform[`${api_namespace}/${api_path}`]
+            if (typeof longNs === 'function') {
+                yield longNs.call(this, raw)
+                continue
+            }
+
+            // Fallback for anything left
+            yield this.#transform['*'].call(this, raw);
+        }
+    }
+
+    async *#fetchAll<T>(
+        api_path: string,
+        limit: number,
+        api_namespace: string,
+    ): AsyncGenerator<T> {
+        let page_index = 1;
+        let counter = 0;
+
+        while (limit > counter) {
+            const page_size = Math.min(limit - counter, this.#max_per_page);
+            counter += page_size
+
+            const posts = await this.#fetch<T>(`${api_namespace}/${api_path}`, [
+                ['page', `${page_index++}`],
+                ['per_page', `${page_size}`]
+            ])
+
+
+            for (const post of posts) {
+                yield post;
+            }
+
+            if (posts.length < this.#max_per_page) {
+                break;
+            }
+        }
+    }
+
+    async #fetch<T>(api_path: string, query: QueryParams = []): Promise<T[]> {
+        const url = this.#craftUrl(api_path, query)
+        const cacheKey = url.toString();
+
+        if (this.#cache.has(cacheKey)) {
+            return this.#cache.get(cacheKey) as T[];
+        }
+
+        // const headers = { Authorization: this.#pass ? `Basic ${this.#pass}` : '' }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        this.#cache.set(cacheKey, data);
+        return data;
+    }
+
+    #craftUrl(api_path: string, query_params: QueryParams = []): URL {
+        const params = new URLSearchParams([
+            ...query_params,
+            [WordPressAPI.#api_route, api_path],
+        ]);
+
+        return new URL('?' + params.toString(), this.#base);
+    }
 }
 
-function postToData(post: WP_REST_API_Post): Partial<PageData> {
-  return {
-    id: post.id,
-    url: new URL(post.link).pathname,
-    slug: post.slug,
-    date: new Date(post.date),
-    title: post.title.rendered,
-    content: post.content.rendered,
-    excerpt: post.excerpt.rendered,
-    category_id: post.categories,
-    tag_id: post.tags,
-    sticky: post.sticky,
-    author_id: post.author,
-    type: "post",
-  };
-}
-
-function pageToData(post: WP_REST_API_Post): Partial<PageData> {
-  return {
-    id: post.id,
-    url: new URL(post.link).pathname,
-    slug: post.slug,
-    date: new Date(post.date),
-    title: post.title.rendered,
-    content: post.content.rendered,
-    excerpt: post.excerpt.rendered,
-    author_id: post.author,
-    type: "page",
-  };
-}
-
-function termToData(term: WP_REST_API_Term): Partial<PageData> {
-  return {
-    id: term.id,
-    url: new URL(term.link).pathname,
-    slug: term.slug,
-    title: term.name,
-    name: term.name,
-    count: term.count,
-    type: term.taxonomy === "category" ? "category" : "tag",
-  };
-}
-
-function userToData(term: WP_REST_API_User): Partial<PageData> {
-  return {
-    id: term.id,
-    url: new URL(term.link).pathname,
-    slug: term.slug,
-    title: term.name,
-    name: term.name,
-    avatar_urls: term.avatar_urls,
-    type: "author",
-  };
-}
-
-function mediaToData(
-  media: WP_REST_API_Attachment,
-): Partial<PageData> {
-  return {
-    id: media.id,
-    url: new URL(media.source_url).pathname,
-    slug: media.slug,
-    title: media.title.rendered,
-    caption: media.caption.rendered,
-    alt_text: media.alt_text,
-    media_type: media.media_type,
-    mime_type: media.mime_type,
-    media_details: media.media_details,
-    type: "media",
-  };
+function collectionToData(raw: WP_REST_API): Partial<PageData> {
+    return {
+        ...raw,
+        url: new URL(raw?.source_url || raw?.link).pathname,
+        date: new Date(raw?.date),
+        title: raw?.title?.rendered,
+        content: raw?.content?.rendered,
+        excerpt: raw?.excerpt?.rendered,
+        author_id: raw?.author,
+    };
 }
