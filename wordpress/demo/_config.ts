@@ -37,14 +37,14 @@ function wpTermToData(raw: WP_REST_API) {
     name: raw.name,
     count: raw.count,
     type: raw.taxonomy || "tag",
-  }
+  };
 }
 
 site.use(wordpress({
   wp_url: "https://blog.oscarotero.com",
   limit: 100,
   transform: {
-    'posts': function (raw) {
+    "posts": function (raw) {
       return {
         id: raw.id,
         url: new URL(raw.link).pathname,
@@ -58,9 +58,9 @@ site.use(wordpress({
         sticky: raw.sticky,
         author_id: raw.author,
         type: "post",
-      }
+      };
     },
-    'pages': function (raw) {
+    "pages": function (raw) {
       return {
         id: raw.id,
         url: new URL(raw.link).pathname,
@@ -71,11 +71,11 @@ site.use(wordpress({
         excerpt: raw.excerpt.rendered,
         author_id: raw.author,
         type: "page",
-      }
+      };
     },
-    'tags': wpTermToData,
-    'categories': wpTermToData,
-    'users': function (raw) {
+    "tags": wpTermToData,
+    "categories": wpTermToData,
+    "users": function (raw) {
       return {
         type: "author",
         id: raw.id,
@@ -84,9 +84,9 @@ site.use(wordpress({
         title: raw.name,
         name: raw.name,
         avatar_urls: raw.avatar_urls,
-      }
-    }
-  }
+      };
+    },
+  },
 }));
 
 export default site;
