@@ -30,13 +30,13 @@ site.use(relations({
 
 function wpTermToData(raw: WP_REST_API) {
   return {
+    type: raw.taxonomy === "category" ? "category" : "tag",
     id: raw.id,
     url: new URL(raw.link).pathname,
     slug: raw.slug,
     title: raw.name,
     name: raw.name,
     count: raw.count,
-    type: raw.taxonomy || "tag",
   };
 }
 
@@ -46,6 +46,7 @@ site.use(wordpress({
   transform: {
     "posts": function (raw) {
       return {
+        type: "post",
         id: raw.id,
         url: new URL(raw.link).pathname,
         slug: raw.slug,
@@ -57,11 +58,11 @@ site.use(wordpress({
         tag_id: raw.tags,
         sticky: raw.sticky,
         author_id: raw.author,
-        type: "post",
       };
     },
     "pages": function (raw) {
       return {
+        type: "page",
         id: raw.id,
         url: new URL(raw.link).pathname,
         slug: raw.slug,
@@ -70,7 +71,6 @@ site.use(wordpress({
         content: raw.content.rendered,
         excerpt: raw.excerpt.rendered,
         author_id: raw.author,
-        type: "page",
       };
     },
     "tags": wpTermToData,
