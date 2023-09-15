@@ -208,6 +208,8 @@ export class WordPressAPI {
     // const headers = { Authorization: this.#pass ? `Basic ${this.#pass}` : '' }
 
     const res = await fetch(url);
+    if (!res.ok) throw new Error(`Unable to fetch the data: ${res.status}»${res.statusText}`)
+
     const data = await res.json();
     this.#cache.set(cacheKey, data);
     return data;
