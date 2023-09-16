@@ -14,25 +14,28 @@ import {
 } from "npm:wp-types@3.61.0";
 
 type QueryParams = Iterable<string[]>;
-export type CollectionPath = string
+export type CollectionPath = string;
 export type WP_REST_API =
-  WP_REST_API_Attachment
+  | WP_REST_API_Attachment
   | WP_REST_API_Post
   | WP_REST_API_Term
   | WP_REST_API_User;
 
-type Transformer = (data: Partial<PageData>, raw: WP_REST_API) => Partial<PageData>;
+type Transformer = (
+  data: Partial<PageData>,
+  raw: WP_REST_API,
+) => Partial<PageData>;
 export interface Transform {
   [type: string]: Transformer;
 }
 
 export interface Options {
   baseUrl: string;
-  // auth?: string | `${string}:${string}`; // Base64 | 'user:pass'
+  auth?: string | `${string}:${string}`; // Base64 | 'user:pass'
   limit: number;
   maxPerPage: number;
   collections: {
-    [name: string]: string // API full path, ex: /namespace/path
+    [name: string]: string; // API full path, ex: /namespace/path
   };
   transform: Transform;
 }
@@ -58,7 +61,7 @@ export const presetRelation: Record<string, unknown> = {
     foreignKey: "page_id",
     pluralRelationKey: "pages",
   },
-}
+};
 
 const presetTransform: Transform = {
   "post": (data, raw) => ({
@@ -94,7 +97,7 @@ const presetTransform: Transform = {
     mime_type: raw.mime_type,
     media_details: raw.media_details,
   }),
-}
+};
 
 export const defaults: Options = {
   baseUrl: "https://localhost",
@@ -102,15 +105,15 @@ export const defaults: Options = {
   limit: Infinity,
   maxPerPage: 100,
   collections: {
-    'author': '/wp/v2/users',
-    'post': '/wp/v2/posts',
-    'page': '/wp/v2/pages',
-    'tag': '/wp/v2/tags',
-    'category': '/wp/v2/categories',
-    'media': '/wp/v2/media',
+    "author": "/wp/v2/users",
+    "post": "/wp/v2/posts",
+    "page": "/wp/v2/pages",
+    "tag": "/wp/v2/tags",
+    "category": "/wp/v2/categories",
+    "media": "/wp/v2/media",
   },
   transform: {
-    "*": data => data,
+    "*": (data) => data,
   },
 };
 
@@ -127,12 +130,12 @@ export class WordPressAPI {
   static #apiRoute = "rest_route";
 
   #base: URL;
-  // #pass: string | undefined;
+  #pass: string | undefined;
 
   #limit: number;
   #maxPerPage: number;
 
-  #collections: Options['collections'];
+  #collections: Options["collections"];
   #customTransformer: Transform;
 
   #cache = new Map<string, unknown>();
@@ -144,9 +147,11 @@ export class WordPressAPI {
     this.#collections = options.collections;
     this.#customTransformer = options.transform;
 
-    // if (options.auth) {
-    //     this.#pass = options.auth.includes(':') ? btoa(options.auth) : options.auth;
-    // }
+    if (options.auth) {
+      this.#pass = options.auth.includes(":")
+        ? btoa(options.auth)
+        : options.auth;
+    }
   }
 
   async *collection(
@@ -156,15 +161,19 @@ export class WordPressAPI {
     const filterList: Transformer[] = [
       requirementFilter,
       presetTransform[name] || this.#customTransformer["*"],
-      this.#customTransformer[name]
-    ]
+      this.#customTransformer[name],
+    ];
 
-    const response = this.#fetchAll<WP_REST_API>(this.#collections[name], limit)
+    const response = this.#fetchAll<WP_REST_API>(
+      this.#collections[name],
+      limit,
+    );
     for await (const raw of response) {
       yield filterList.reduce(
-        (data, transform) => typeof transform === 'function' ? transform(data, raw) : data,
-        { type: name } as Partial<PageData>
-      )
+        (data, transform) =>
+          typeof transform === "function" ? transform(data, raw) : data,
+        { type: name } as Partial<PageData>,
+      );
     }
   }
 
@@ -184,7 +193,7 @@ export class WordPressAPI {
         [
           ["page", `${pageIndex++}`],
           ["per_page", `${pageSize}`],
-        ]
+        ],
       );
 
       for (const post of posts) {
@@ -205,10 +214,16 @@ export class WordPressAPI {
       return this.#cache.get(cacheKey) as T[];
     }
 
-    // const headers = { Authorization: this.#pass ? `Basic ${this.#pass}` : '' }
+    const headers = this.#pass
+      ? { Authorization: `Basic ${this.#pass}` }
+      : undefined;
+    const res = await fetch(url, { headers });
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Unable to fetch the data: ${res.status}»${res.statusText}`)
+    if (!res.ok) {
+      throw new Error(
+        `Unable to fetch the data: ${res.status}»${res.statusText}`,
+      );
+    }
 
     const data = await res.json();
     this.#cache.set(cacheKey, data);
@@ -225,14 +240,17 @@ export class WordPressAPI {
   }
 }
 
-function requirementFilter(data: Partial<PageData>, raw: WP_REST_API): Partial<PageData> {
+function requirementFilter(
+  data: Partial<PageData>,
+  raw: WP_REST_API,
+): Partial<PageData> {
   return {
     ...data,
     id: raw.id,
     slug: raw.slug,
     url: new URL(raw?.source_url || raw?.link).pathname,
     date: raw?.date ? new Date(raw?.date) : undefined,
-  }
+  };
 }
 
 function termToData(data: Partial<PageData>, raw: WP_REST_API) {
