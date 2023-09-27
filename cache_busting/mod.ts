@@ -1,18 +1,15 @@
-import type { Page, Plugin, Site } from "lume/core.ts";
 import binaryLoader from "lume/core/loaders/binary.ts";
 import { merge } from "lume/core/utils.ts";
-import type { Element } from "lume/deps/dom.ts";
+import { encode } from "lume/deps/hex.ts";
 import { posix } from "lume/deps/path.ts";
+import modifyUrls from "lume/plugins/modify_urls.ts";
+
+import type { Page, Plugin, Site } from "lume/core.ts";
+import type { Element } from "lume/deps/dom.ts";
 
 export interface Options {
-  /** The list of extensions this plugin applies to */
-  extensions: string[];
-
   /** Attribute used to select the elements this plugin applies to */
   attribute: string;
-
-  /** The algorithm used to calculate file hashes */
-  algorithm: "sha256" | "sha384" | "sha512";
 
   /** The length of file hashes to generate */
   hashLength: number;
@@ -20,115 +17,51 @@ export interface Options {
 
 // Default options
 export const defaults: Options = {
-  extensions: [".html"],
   attribute: "hash",
-  algorithm: "sha384",
   hashLength: 10,
 };
 
 const cache = new Map<string, string>();
 
-/**
- * A plugin to add cache-busting hashes to the filenames of HTML sub-resources.
- */
+/** A plugin to add cache busting hashes to all URLs found in HTML documents. */
 export default function (userOptions?: Partial<Options>): Plugin {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    const selector = `[${options.attribute}]`;
+    const selector = `[${options.attribute}]`
 
-    site.process(options.extensions, async (page: Page) => {
-      const { document } = page;
+    site.use(modifyUrls({ fn: replace }));
 
-      if (!document) {
-        return;
+    async function replace(url: string | null, _: Page, element: Element) {
+      if (url && element.matches(selector)) {
+        return await addHash(url);
+      }
+  
+      return "";
+    }
+
+    async function addHash(url: string) {
+      let hash = await getHash(url);
+      hash = hash.substring(0, options.hashLength);
+
+      if (url.includes("?")) {
+        const [path, rest] = url.split("?", 2);
+        return `${path}?v=${hash}&${rest}`
       }
 
-      const nodes = document.querySelectorAll(selector);
+      return `${url}?v=${hash}`;
+    }
 
-      for (const node of nodes) {
-        const element = node as Element;
-
-        // TODO what other attributes do we want to support?
-        //   link: ['href']
-        //   video: ['src', 'poster']
-        //   source: ['src', 'srcset']
-        //   img: ['src', 'srcset']
-        //   image: ['xlink:href', 'href']
-        //   use: ['xlink:href', 'href']
-        if (element.hasAttribute("src")) {
-          await hashSrc(element);
-        }
-
-        if (element.hasAttribute("href")) {
-          await hashHref(element);
-        }
-
-        element.removeAttribute(options.attribute);
-      }
-
-      async function hashHref(element: Element) {
-        const url = element.getAttribute("href")!;
-
-        const hash = await getHash(options.algorithm, url);
-
-        // TODO Better handling of query string parameters
-        // Here I'm assuming there aren't already query string parameters
-        // I'm sure there's a better approach, perhaps using
-        // `new URL(href, site.options.location)`
-        const urlWithHash = `${url}?v=${hash}`;
-
-        element.setAttribute("href", urlWithHash);
-      }
-
-      async function hashSrc(element: Element) {
-        const url = element.getAttribute("src")!;
-
-        const hash = await getHash(options.algorithm, url);
-
-        // TODO Better handling of query string parameters
-        // Here I'm assuming there aren't already query string parameters
-        // I'm sure there's a better approach, perhaps using
-        // `new URL(href, site.options.location)`
-        const urlWithHash = `${url}?v=${hash}`;
-
-        element.setAttribute("src", urlWithHash);
-      }
-    });
-
-    // TODO what hash algorithms do we want to support?
-    async function getHash(
-      algorithm: Options["algorithm"],
-      url: string
-    ) {
+    async function getHash(url: string) {
       // Ensure the path starts with "/"
       url = posix.join("/", url);
 
-      if (cache.has(url)) {
-        return cache.get(url)!;
+      if (!cache.has(url)) {
+        const content = await getFileContent(url);
+        cache.set(url, await hash(content));
       }
-    
-      const data = await getFileContent(url);
-      // TODO I initially used the following, from the SRI plugin.
-      // I'm not sure why this doesn't work.
-      // const data = await read(url, true);
-      const hashBuffer = await crypto.subtle.digest(digestName(algorithm), data);
-      const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-      cache.set(url, hash);
-      return hash.substring(0, options.hashLength);
-    }
-    
-    function digestName(algorithm: Options["algorithm"]) {
-      switch (algorithm) {
-        case "sha256":
-          return "SHA-256";
-        case "sha384":
-          return "SHA-384";
-        case "sha512":
-          return "SHA-512";
-        default:
-          return "SHA-384";
-      }
+
+      return cache.get(url)!;
     }
 
     async function getFileContent(url: string,): Promise<Uint8Array> {
@@ -139,6 +72,12 @@ export default function (userOptions?: Partial<Options>): Plugin {
       }
 
       return content as Uint8Array;
+    }
+
+    async function hash(content: Uint8Array): Promise<string> {
+      const hash = await crypto.subtle.digest("SHA-1", content);
+      const hex = encode(new Uint8Array(hash));
+      return new TextDecoder().decode(hex);
     }
   };
 }
