@@ -1,7 +1,7 @@
 import lume from "lume/mod.ts";
-import pagefind from "../mod.ts";
+import sri from "../mod.ts";
 
 const site = lume();
-site.use(pagefind());
+site.use(sri());
 
 export default site;
