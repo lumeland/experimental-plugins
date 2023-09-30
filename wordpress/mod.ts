@@ -126,7 +126,7 @@ export default function (userOptions?: Partial<Options>) {
 
   return (site: Site) => {
     site.data("wp", wp);
-    site.hooks.addTransformer = wp.addTransformer.bind(wp);
+    site.hooks.addWordPressTransformer = wp.addTransformer.bind(wp);
   };
 }
 
@@ -245,16 +245,11 @@ export class WordPressAPI {
   }
 
   addTransformer(transform: Transform) {
-    for (const collectionName in transform) {
-      if (!Object.prototype.hasOwnProperty.call(transform, collectionName)) {
-        continue;
-      }
-
-      const transformer = transform[collectionName];
-      if (typeof this.#customStackTransform[collectionName] === "undefined") {
-        this.#customStackTransform[collectionName] = [transformer];
+    for (const [name, transformer] of Object.entries(transform)) {
+      if (typeof this.#customStackTransform[name] === "undefined") {
+        this.#customStackTransform[name] = [transformer];
       } else {
-        this.#customStackTransform[collectionName].push(transformer);
+        this.#customStackTransform[name].push(transformer);
       }
     }
   }
