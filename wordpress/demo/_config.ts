@@ -7,7 +7,7 @@ site.use(relations({ foreignKeys: { ...presetRelation } }));
 
 site.use(wordpress({
   baseUrl: "https://blog.oscarotero.com",
-  limit: 100,
+  maxPerCollection: 100,
 }));
 
 export default site;

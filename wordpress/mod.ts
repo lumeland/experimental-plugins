@@ -26,13 +26,16 @@ type Transformer = (
   raw: WP_REST_API,
 ) => Partial<PageData>;
 export interface Transform {
-  [type: string]: Transformer;
+  [collectionName: string]: Transformer;
+}
+export interface StackableTransform {
+  [collectionName: string]: Transformer[];
 }
 
 export interface Options {
   baseUrl: string;
   auth?: string | `${string}:${string}`; // Base64 | 'user:pass'
-  limit: number;
+  maxPerCollection: number;
   maxPerPage: number;
   collections: {
     [name: string]: string; // API full path, ex: /namespace/path
@@ -102,7 +105,7 @@ const presetTransform: Transform = {
 export const defaults: Options = {
   baseUrl: "https://localhost",
   // auth: undefined,
-  limit: Infinity,
+  maxPerCollection: Infinity,
   maxPerPage: 100,
   collections: {
     "author": "/wp/v2/users",
@@ -123,6 +126,7 @@ export default function (userOptions?: Partial<Options>) {
 
   return (site: Site) => {
     site.data("wp", wp);
+    site.hooks.addTransformer = wp._addTransformer;
   };
 }
 
@@ -132,20 +136,23 @@ export class WordPressAPI {
   #base: URL;
   #pass: string | undefined;
 
-  #limit: number;
+  #maxPerCollection: number;
   #maxPerPage: number;
 
   #collections: Options["collections"];
-  #customTransformer: Transform;
+  #customStackTransform: StackableTransform;
 
   #cache = new Map<string, unknown>();
 
   constructor(options: Options) {
     this.#base = new URL(options.baseUrl);
-    this.#limit = options.limit;
+    this.#maxPerCollection = options.maxPerCollection;
     this.#maxPerPage = options.maxPerPage;
     this.#collections = options.collections;
-    this.#customTransformer = options.transform;
+    this.#customStackTransform = mergeTransformToStack(
+      options.transform,
+      {} as StackableTransform,
+    );
 
     if (options.auth) {
       this.#pass = options.auth.includes(":")
@@ -156,12 +163,12 @@ export class WordPressAPI {
 
   async *collection(
     name: string,
-    limit: number = this.#limit,
+    limit: number = this.#maxPerCollection,
   ): AsyncGenerator<Partial<PageData>> {
     const filterList: Transformer[] = [
       requirementFilter,
-      presetTransform[name] || this.#customTransformer["*"],
-      this.#customTransformer[name],
+      presetTransform[name] || this.#customStackTransform["*"],
+      ...this.#customStackTransform[name],
     ];
 
     const response = this.#fetchAll<WP_REST_API>(
@@ -238,6 +245,36 @@ export class WordPressAPI {
 
     return new URL("/index.php?" + params.toString(), this.#base);
   }
+
+  /**
+   * Hook function
+   * (internal usage only)
+   */
+  _addTransformer(transform: Transform) {
+    this.#customStackTransform = mergeTransformToStack(
+      transform,
+      this.#customStackTransform,
+    );
+  }
+}
+
+function mergeTransformToStack(
+  transform: Transform,
+  stack: StackableTransform,
+): StackableTransform {
+  for (const collectionName in transform) {
+    if (!Object.prototype.hasOwnProperty.call(transform, collectionName)) {
+      continue;
+    }
+
+    const transformer = transform[collectionName];
+    if (typeof stack[collectionName] === "undefined") {
+      stack[collectionName] = [transformer];
+    } else {
+      stack[collectionName].push(transformer);
+    }
+  }
+  return stack;
 }
 
 function requirementFilter(
