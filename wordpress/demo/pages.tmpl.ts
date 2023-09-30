@@ -1,17 +1,26 @@
 export default async function* ({ wp }) {
-  for await (const page of wp.posts()) {
+  // api_path: /wp/v2/posts
+  for await (const page of wp.collection("post")) {
     yield { ...page, layout: "post.njk" };
   }
-  for await (const page of wp.authors()) {
+
+  // api_path: /wp/v2/users
+  for await (const page of wp.collection("author")) {
     yield { ...page, layout: "author.njk" };
   }
-  for await (const page of wp.tags()) {
+
+  // api_path: /wp/v2/tags
+  for await (const page of wp.collection("tag")) {
     yield { ...page, layout: "tag.njk" };
   }
-  for await (const page of wp.categories()) {
+
+  // api_path: /wp/v2/categories
+  for await (const page of wp.collection("category")) {
     yield { ...page, layout: "category.njk" };
   }
-  for await (const page of wp.pages()) {
+
+  // api_path: /wp/v2/pages
+  for await (const page of wp.collection("page")) {
     if (page.url === "/") continue; // Skip the home page (it's already generated)
     yield { ...page, layout: "page.njk" };
   }
