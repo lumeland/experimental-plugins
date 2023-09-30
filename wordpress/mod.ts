@@ -25,82 +25,16 @@ type Transformer = (
   data: Partial<PageData>,
   raw: WP_REST_API,
 ) => Partial<PageData>;
-export interface Transform {
-  [collectionName: string]: Transformer;
-}
-export interface StackableTransform {
-  [collectionName: string]: Transformer[];
-}
 
 export interface Options {
   baseUrl: string;
   auth?: string | `${string}:${string}`; // Base64 | 'user:pass'
   maxPerCollection: number;
   maxPerPage: number;
-  collections: {
-    [name: string]: string; // API full path, ex: /namespace/path
-  };
-  transform: Transform;
+  collections: Record<string, string>; // API full path, ex: /namespace/path
+  transform: Record<string, Transformer | Transformer[]>;
+  cache: number;
 }
-
-export const presetRelation: Record<string, unknown> = {
-  post: {
-    foreignKey: "post_id",
-    pluralRelationKey: "posts",
-  },
-  tag: {
-    foreignKey: "tag_id",
-    pluralRelationKey: "tags",
-  },
-  author: {
-    foreignKey: "author_id",
-    pluralRelationKey: "authors",
-  },
-  category: {
-    foreignKey: "category_id",
-    pluralRelationKey: "categories",
-  },
-  page: {
-    foreignKey: "page_id",
-    pluralRelationKey: "pages",
-  },
-};
-
-const presetTransform: Transform = {
-  "post": (data, raw) => ({
-    ...data,
-    title: raw?.title?.rendered,
-    content: raw?.content?.rendered,
-    excerpt: raw?.excerpt?.rendered,
-    tag_id: raw.tags,
-    category_id: raw.categories,
-    sticky: raw.sticky,
-    author_id: raw.author,
-  }),
-  "page": (data, raw) => ({
-    ...data,
-    title: raw?.title?.rendered,
-    content: raw?.content?.rendered,
-    excerpt: raw?.excerpt?.rendered,
-    author_id: raw.author,
-  }),
-  "tag": termToData,
-  "category": termToData,
-  "author": (data, raw) => ({
-    ...data,
-    name: raw.name,
-    description: raw.description,
-    avatar_urls: raw.avatar_urls,
-  }),
-  "media": (data, raw) => ({
-    ...data,
-    caption: raw.caption.rendered,
-    alt_text: raw.alt_text,
-    media_type: raw.media_type,
-    mime_type: raw.mime_type,
-    media_details: raw.media_details,
-  }),
-};
 
 export const defaults: Options = {
   baseUrl: "https://localhost",
@@ -115,14 +49,53 @@ export const defaults: Options = {
     "category": "/wp/v2/categories",
     "media": "/wp/v2/media",
   },
+  cache: 60 * 60 * 24, // 1 day
   transform: {
-    "*": (data) => data,
+    "*": [
+      requirementFilter,
+    ],
+    post: (data, raw) => ({
+      ...data,
+      title: raw?.title?.rendered,
+      content: raw?.content?.rendered,
+      excerpt: raw?.excerpt?.rendered,
+      tag_id: raw.tags,
+      category_id: raw.categories,
+      sticky: raw.sticky,
+      author_id: raw.author,
+    }),
+    page: (data, raw) => ({
+      ...data,
+      title: raw?.title?.rendered,
+      content: raw?.content?.rendered,
+      excerpt: raw?.excerpt?.rendered,
+      author_id: raw.author,
+    }),
+    tag: termToData,
+    category: termToData,
+    author: (data, raw) => ({
+      ...data,
+      name: raw.name,
+      description: raw.description,
+      avatar_urls: raw.avatar_urls,
+    }),
+    media: (data, raw) => ({
+      ...data,
+      caption: raw.caption.rendered,
+      alt_text: raw.alt_text,
+      media_type: raw.media_type,
+      mime_type: raw.mime_type,
+      media_details: raw.media_details,
+    }),
   },
 };
 
 export default function (userOptions?: Partial<Options>) {
   const options = merge(defaults, userOptions);
   const wp = new WordPressAPI(options);
+
+  wp.addTransformers(defaults.transform);
+  wp.addTransformers(userOptions?.transform ?? {});
 
   return (site: Site) => {
     site.data("wp", wp);
@@ -135,22 +108,20 @@ export class WordPressAPI {
 
   #base: URL;
   #pass: string | undefined;
+  #cache: number;
 
   #maxPerCollection: number;
   #maxPerPage: number;
 
   #collections: Options["collections"];
-  #customStackTransform: StackableTransform = {};
-
-  #cache = new Map<string, unknown>();
+  #transformers: Record<string, Transformer[]> = {};
 
   constructor(options: Options) {
     this.#base = new URL(options.baseUrl);
     this.#maxPerCollection = options.maxPerCollection;
     this.#maxPerPage = options.maxPerPage;
     this.#collections = options.collections;
-
-    this.addTransformer(options.transform);
+    this.#cache = options.cache;
 
     if (options.auth) {
       this.#pass = options.auth.includes(":")
@@ -163,10 +134,9 @@ export class WordPressAPI {
     name: string,
     limit: number = this.#maxPerCollection,
   ): AsyncGenerator<Partial<PageData>> {
-    const filterList: Transformer[] = [
-      requirementFilter,
-      presetTransform[name] || this.#customStackTransform["*"],
-      ...(this.#customStackTransform[name] ?? []),
+    const transformers: Transformer[] = [
+      ...(this.#transformers["*"] ?? []),
+      ...(this.#transformers[name] ?? []),
     ];
 
     const response = this.#fetchAll<WP_REST_API>(
@@ -174,9 +144,8 @@ export class WordPressAPI {
       limit,
     );
     for await (const raw of response) {
-      yield filterList.reduce(
-        (data, transform) =>
-          typeof transform === "function" ? transform(data, raw) : data,
+      yield transformers.reduce(
+        (data, transform) => transform(data, raw),
         { type: name } as Partial<PageData>,
       );
     }
@@ -213,26 +182,11 @@ export class WordPressAPI {
 
   async #fetch<T>(apiPath: string, query: QueryParams = []): Promise<T[]> {
     const url = this.#craftUrl(apiPath, query);
-    const cacheKey = url.toString();
-
-    if (this.#cache.has(cacheKey)) {
-      return this.#cache.get(cacheKey) as T[];
-    }
-
     const headers = this.#pass
       ? { Authorization: `Basic ${this.#pass}` }
       : undefined;
-    const res = await fetch(url, { headers });
 
-    if (!res.ok) {
-      throw new Error(
-        `Unable to fetch the data: ${res.status}»${res.statusText}`,
-      );
-    }
-
-    const data = await res.json();
-    this.#cache.set(cacheKey, data);
-    return data;
+    return await fetchJSON(new Request(url, { headers }), this.#cache);
   }
 
   #craftUrl(apiPath: string, query_params: QueryParams = []): URL {
@@ -244,13 +198,22 @@ export class WordPressAPI {
     return new URL("/index.php?" + params.toString(), this.#base);
   }
 
-  addTransformer(transform: Transform) {
-    for (const [name, transformer] of Object.entries(transform)) {
-      if (typeof this.#customStackTransform[name] === "undefined") {
-        this.#customStackTransform[name] = [transformer];
-      } else {
-        this.#customStackTransform[name].push(transformer);
+  addTransformers(transformers: Record<string, Transformer | Transformer[]>) {
+    for (const [name, transformer] of Object.entries(transformers)) {
+      if (Array.isArray(transformer)) {
+        this.addTransformer(name, ...transformer);
+        continue;
       }
+
+      this.addTransformer(name, transformer);
+    }
+  }
+
+  addTransformer(name: string, ...transformers: Transformer[]) {
+    if (typeof this.#transformers[name] === "undefined") {
+      this.#transformers[name] = transformers;
+    } else {
+      this.#transformers[name].push(...transformers);
     }
   }
 }
@@ -275,4 +238,37 @@ function termToData(data: Partial<PageData>, raw: WP_REST_API) {
     description: raw.description,
     count: raw.count,
   };
+}
+
+async function fetchJSON(request: Request, ttl?: number): Promise<any> {
+  const cache = await caches.open("lume_remote_files");
+  let cached = await cache.match(request);
+
+  if (cached && ttl) {
+    const cachedAt = cached.headers.get("x-cached-at");
+
+    if (cachedAt) {
+      const cacheTime = new Date(cachedAt);
+      const diff = Date.now() - cacheTime.getTime();
+
+      if (diff <= ttl * 1000) {
+        return await cached.json();
+      }
+    }
+  }
+
+  const response = await fetch(request);
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to fetch the data from ${request.url}: ${response.status}»${response.statusText}`,
+    );
+  }
+
+  const body = await response.json();
+  cached = new Response(JSON.stringify(body));
+  cached.headers.set("x-cached-at", new Date().toString());
+  cached.headers.set("content-type", "application/json; charset=utf-8");
+  await cache.put(request, cached);
+  return body;
 }
