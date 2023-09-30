@@ -126,7 +126,7 @@ export default function (userOptions?: Partial<Options>) {
 
   return (site: Site) => {
     site.data("wp", wp);
-    site.hooks.addTransformer = wp._addTransformer;
+    site.hooks.addTransformer = wp.addTransformer.bind(wp);
   };
 }
 
@@ -140,7 +140,7 @@ export class WordPressAPI {
   #maxPerPage: number;
 
   #collections: Options["collections"];
-  #customStackTransform: StackableTransform;
+  #customStackTransform: StackableTransform = {};
 
   #cache = new Map<string, unknown>();
 
@@ -149,10 +149,8 @@ export class WordPressAPI {
     this.#maxPerCollection = options.maxPerCollection;
     this.#maxPerPage = options.maxPerPage;
     this.#collections = options.collections;
-    this.#customStackTransform = mergeTransformToStack(
-      options.transform,
-      {} as StackableTransform,
-    );
+
+    this.addTransformer(options.transform);
 
     if (options.auth) {
       this.#pass = options.auth.includes(":")
@@ -168,7 +166,7 @@ export class WordPressAPI {
     const filterList: Transformer[] = [
       requirementFilter,
       presetTransform[name] || this.#customStackTransform["*"],
-      ...this.#customStackTransform[name],
+      ...(this.#customStackTransform[name] ?? []),
     ];
 
     const response = this.#fetchAll<WP_REST_API>(
@@ -246,35 +244,20 @@ export class WordPressAPI {
     return new URL("/index.php?" + params.toString(), this.#base);
   }
 
-  /**
-   * Hook function
-   * (internal usage only)
-   */
-  _addTransformer(transform: Transform) {
-    this.#customStackTransform = mergeTransformToStack(
-      transform,
-      this.#customStackTransform,
-    );
-  }
-}
+  addTransformer(transform: Transform) {
+    for (const collectionName in transform) {
+      if (!Object.prototype.hasOwnProperty.call(transform, collectionName)) {
+        continue;
+      }
 
-function mergeTransformToStack(
-  transform: Transform,
-  stack: StackableTransform,
-): StackableTransform {
-  for (const collectionName in transform) {
-    if (!Object.prototype.hasOwnProperty.call(transform, collectionName)) {
-      continue;
-    }
-
-    const transformer = transform[collectionName];
-    if (typeof stack[collectionName] === "undefined") {
-      stack[collectionName] = [transformer];
-    } else {
-      stack[collectionName].push(transformer);
+      const transformer = transform[collectionName];
+      if (typeof this.#customStackTransform[collectionName] === "undefined") {
+        this.#customStackTransform[collectionName] = [transformer];
+      } else {
+        this.#customStackTransform[collectionName].push(transformer);
+      }
     }
   }
-  return stack;
 }
 
 function requirementFilter(
