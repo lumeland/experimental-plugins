@@ -1,5 +1,5 @@
 import binaryLoader from "lume/core/loaders/binary.ts";
-import { merge } from "lume/core/utils.ts";
+import { getPathAndExtension, merge } from "lume/core/utils.ts";
 import { encode } from "lume/deps/hex.ts";
 import { posix } from "lume/deps/path.ts";
 import modifyUrls from "lume/plugins/modify_urls.ts";
@@ -41,27 +41,24 @@ export default function (userOptions?: Partial<Options>): Plugin {
     }
 
     async function addHash(url: string) {
-      let hash = await getHash(url);
-      hash = hash.substring(0, options.hashLength);
-
-      if (url.includes("?")) {
-        const [path, rest] = url.split("?", 2);
-        return `${path}?v=${hash}&${rest}`
-      }
-
-      return `${url}?v=${hash}`;
-    }
-
-    async function getHash(url: string) {
       // Ensure the path starts with "/"
       url = posix.join("/", url);
+      
+      const [path, ext] = getPathAndExtension(url);
 
       if (!cache.has(url)) {
         const content = await getFileContent(url);
-        cache.set(url, await hash(content));
+
+        const contentHash = await getContentHash(content);
+
+        renameFile(url, contentHash);
+
+        cache.set(url, contentHash);
       }
 
-      return cache.get(url)!;
+      const hash = cache.get(url)!;
+
+      return `${path}-${hash}${ext}`;
     }
 
     async function getFileContent(url: string,): Promise<Uint8Array> {
@@ -74,10 +71,33 @@ export default function (userOptions?: Partial<Options>): Plugin {
       return content as Uint8Array;
     }
 
-    async function hash(content: Uint8Array): Promise<string> {
-      const hash = await crypto.subtle.digest("SHA-1", content);
-      const hex = encode(new Uint8Array(hash));
-      return new TextDecoder().decode(hex);
+    function renameFile(url: string, hash: string) {
+      // It's a page
+      const page = site.pages.find(page => page.data.url === url);
+
+      if (page) {
+        const [path, ext] = getPathAndExtension(url);
+        page.data.url = `${path}-${hash}${ext}`;
+        return;
+      }
+
+      // It's a static file
+      const staticFile = site.files.find(file => file.outputPath === url);
+
+      if (staticFile) {
+        const [path, ext] = getPathAndExtension(url);
+        staticFile.outputPath = `${path}-${hash}${ext}`;      
+        return;
+      }
+
+      throw new Error(`Unable to find the file "${url}"`);      
+    }
+
+    async function getContentHash(content: Uint8Array): Promise<string> {
+      const hashBuffer = await crypto.subtle.digest("SHA-1", content);
+      const hex = encode(new Uint8Array(hashBuffer));
+      const hash = new TextDecoder().decode(hex);
+      return hash.substring(0, options.hashLength);
     }
   };
 }
