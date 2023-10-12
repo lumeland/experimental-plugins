@@ -38,8 +38,8 @@ export class MarkdocEngine implements Engine {
         {
           ...this.options.config,
           variables: {
+            ...data,
             ...(this.options.config?.variables ?? {}),
-            markdoc: { frontmatter: data },
           },
         },
       ),
