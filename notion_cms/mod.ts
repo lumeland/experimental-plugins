@@ -4,6 +4,13 @@ import { NotionToMarkdown } from "npm:notion-to-md@2.5.5";
 
 import type { PageData, Site } from "lume/core.ts";
 
+// infer types from Notion Client because they are not exported.
+type GetPageResponse = Awaited<ReturnType<Client["pages"]["retrieve"]>>;
+type PageObjectResponse = Extract<GetPageResponse, { parent: any }>;
+type PartialPageObjectResponse = Exclude<GetPageResponse, PageObjectResponse>;
+type PageProperties = PageObjectResponse["properties"];
+type QueryFilter = Parameters<Client["databases"]["query"]>[0]["filter"];
+
 export interface Options {
   token: string;
   databases: Record<string, string>;
@@ -38,7 +45,7 @@ export class NotionAPI {
 
   async *database(
     name: string,
-    filter?: Record<string, unknown>,
+    filter?: QueryFilter
   ): AsyncGenerator<Partial<PageData>> {
     const id = this.#options.databases[name];
     if (!id) {
@@ -51,6 +58,7 @@ export class NotionAPI {
     });
 
     for (const row of result.results) {
+      if (!isCompletePageObject(row)) continue;
       const mdBlocks = await this.#toMarkdown.pageToMarkdown(row.id);
       let url = new URL(row.url).pathname;
       if (this.prettyUrls) {
@@ -81,15 +89,21 @@ export class NotionAPI {
     });
     for (const database of result.results) {
       yield {
-        title: database.title[0].plain_text,
+        title: "title" in database ? database.title[0].plain_text : null,
         id: database.id,
       };
     }
   }
 }
 
-function plainDatabaseProperties(properties: Record<string, unknown>) {
-  const result = {};
+function isCompletePageObject(
+  page: PageObjectResponse | PartialPageObjectResponse
+): page is PageObjectResponse {
+  return "parent" in page;
+}
+
+function plainDatabaseProperties(properties: PageProperties) {
+  const result: Record<string, any> = {};
   for (const [name, value] of Object.entries(properties)) {
     const key = name.toLocaleLowerCase().replace(" ", "_");
     result[key] = getPropertyValue(value);
@@ -97,13 +111,13 @@ function plainDatabaseProperties(properties: Record<string, unknown>) {
   return result;
 }
 
-function getPropertyValue(value: Record<string, unknown>) {
+function getPropertyValue(value: PageProperties[string]) {
   switch (value.type) {
     case "multi_select":
       return value.multi_select.map((item) => item.name);
   }
 
-  const val = value[value.type];
+  const val: unknown = value[value.type as keyof typeof value];
 
   if (Array.isArray(val)) {
     return val.map((item) => item.plain_text).join("\n");
