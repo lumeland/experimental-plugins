@@ -6,6 +6,6 @@
   },
   "lock": false,
   "imports": {
-    "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@ff44a565c9c90306fd958a5c6adf309768fe3fed/"
+    "lume/": "https://deno.land/x/lume@v1.19.1/"
   }
 }

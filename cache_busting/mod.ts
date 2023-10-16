@@ -21,7 +21,7 @@ export const defaults: Options = {
   hashLength: 10,
 };
 
-const cache = new Map<string, string>();
+const cache = new Map<string, Promise<string>>();
 
 /** A plugin to add cache busting hashes to all URLs found in HTML documents. */
 export default function (userOptions?: Partial<Options>): Plugin {
@@ -32,36 +32,45 @@ export default function (userOptions?: Partial<Options>): Plugin {
 
     site.use(modifyUrls({ fn: replace }));
 
-    async function replace(url: string | null, _: Page, element: Element) {
+    async function replace(url: string | null, page: Page, element: Element) {
       if (url && element.matches(selector)) {
-        return await addHash(url);
+        return await addHash(url, page);
       }
-  
+
       return "";
     }
 
-    async function addHash(url: string) {
-      // Ensure the path starts with "/"
-      url = posix.join("/", url);
-      
-      const [path, ext] = getPathAndExtension(url);
-
-      if (!cache.has(url)) {
-        const content = await getFileContent(url);
-
-        const contentHash = await getContentHash(content);
-
-        renameFile(url, contentHash);
-
-        cache.set(url, contentHash);
+    async function addHash(url: string, page: Page) {
+      // Resolve relative URLs
+      if (page.data.url && url.startsWith(".")) {
+        url = posix.join(page.data.url, url);
       }
 
-      const hash = cache.get(url)!;
+      // Ensure the path starts with "/"
+      url = posix.join("/", url);
+
+      if (!cache.has(url)) {
+        cache.set(url, getHash(url));
+      }
+
+      const hash = await cache.get(url)!;
+
+      const [path, ext] = getPathAndExtension(url);
 
       return `${path}-${hash}${ext}`;
     }
 
-    async function getFileContent(url: string,): Promise<Uint8Array> {
+    async function getHash(url: string) {
+      const content = await getFileContent(url);
+
+      const contentHash = await getContentHash(content);
+
+      renameFile(url, contentHash);
+
+      return contentHash;
+    }
+
+    async function getFileContent(url: string): Promise<Uint8Array> {
       const content = await site.getContent(url, binaryLoader);
 
       if (!content) {
@@ -86,11 +95,11 @@ export default function (userOptions?: Partial<Options>): Plugin {
 
       if (staticFile) {
         const [path, ext] = getPathAndExtension(url);
-        staticFile.outputPath = `${path}-${hash}${ext}`;      
+        staticFile.outputPath = `${path}-${hash}${ext}`;
         return;
       }
 
-      throw new Error(`Unable to find the file "${url}"`);      
+      throw new Error(`Unable to find the file "${url}"`);
     }
 
     async function getContentHash(content: Uint8Array): Promise<string> {

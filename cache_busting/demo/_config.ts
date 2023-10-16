@@ -1,9 +1,10 @@
 import lume from "lume/mod.ts";
-import hash from "../mod.ts";
+import cache_busting from "../mod.ts";
 
 const site = lume();
 
-site.copy("kevin-schmid-unsplash.jpg");
-site.use(hash());
+site.copy("./img/kevin-schmid-unsplash.jpg");
+site.copy("./page2/unsplash.jpg");
+site.use(cache_busting());
 
 export default site;
