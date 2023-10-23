@@ -28,7 +28,7 @@ export default function (userOptions?: Partial<Options>): Plugin {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    const selector = `[${options.attribute}]`
+    const selector = `[${options.attribute}]`;
 
     site.use(modifyUrls({ fn: replace }));
 
@@ -82,7 +82,7 @@ export default function (userOptions?: Partial<Options>): Plugin {
 
     function renameFile(url: string, hash: string) {
       // It's a page
-      const page = site.pages.find(page => page.data.url === url);
+      const page = site.pages.find((page) => page.data.url === url);
 
       if (page) {
         const [path, ext] = getPathAndExtension(url);
@@ -91,7 +91,7 @@ export default function (userOptions?: Partial<Options>): Plugin {
       }
 
       // It's a static file
-      const staticFile = site.files.find(file => file.outputPath === url);
+      const staticFile = site.files.find((file) => file.outputPath === url);
 
       if (staticFile) {
         const [path, ext] = getPathAndExtension(url);
