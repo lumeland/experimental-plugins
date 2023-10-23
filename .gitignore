@@ -1,6 +1,7 @@
 _site
 _bin
 deno.lock
+node_modules
 
 # Hide all .vscode dir in the repo children dir
 /**/.vscode
