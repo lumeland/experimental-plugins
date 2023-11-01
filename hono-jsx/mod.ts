@@ -21,7 +21,7 @@ export const defaults: Options = {
 export class HonoJsxEngine implements Engine {
   helpers: Record<string, Helper> = {};
 
-  deleteCache() { }
+  deleteCache() {}
 
   async render(content: unknown, data: Data = {}) {
     // The content is a string, so we have to convert it to a element
@@ -45,17 +45,17 @@ export class HonoJsxEngine implements Engine {
       ? content
       : (typeof content === "function"
         ? await content({ ...data, children }, this.helpers)
-        : content)
+        : content);
 
-    return element
+    return element;
   }
 
   renderSync(content: unknown, data: Data = {}) {
     const element = typeof content === "function"
       ? content(data, this.helpers)
-      : content as string
+      : content as string;
 
-    return element
+    return element;
   }
 
   addHelper(name: string, fn: Helper) {
