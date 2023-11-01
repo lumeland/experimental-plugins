@@ -53,7 +53,7 @@ export class HonoJsxEngine implements Engine {
   renderSync(content: unknown, data: Data = {}) {
     const element = typeof content === "function"
       ? content(data, this.helpers)
-      : content as string;
+      : content;
 
     return element;
   }
