@@ -1,6 +1,6 @@
 import { getPathAndExtension, log, merge } from "lume/core/utils.ts";
 import binaryLoader from "lume/core/loaders/binary.ts";
-import sharp from "npm:sharp@0.33.0-alpha.9";
+import sharp from "npm:sharp@0.33.0-alpha.11";
 import Cache from "lume/core/cache.ts";
 
 import type { Page, Site } from "lume/core.ts";
@@ -129,12 +129,12 @@ export default function (userOptions?: Partial<Options>) {
           if (result) {
             output.content = result;
           } else {
-            transform(content, output, transformation, options);
+            await transform(content, output, transformation, options);
             transformed = true;
             await cache.set(content, transformation, output.content!);
           }
         } else {
-          transform(content, output, transformation, options);
+          await transform(content, output, transformation, options);
           transformed = true;
         }
 
@@ -185,7 +185,8 @@ async function transform(
         }
     }
   }
-  page.content = new Uint8Array(image.toBuffer());
+
+  page.content = new Uint8Array(await image.toBuffer());
 }
 
 function rename(page: Page, transformation: Transformation): void {

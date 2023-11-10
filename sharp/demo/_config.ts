@@ -4,6 +4,8 @@ import sharp from "../mod.ts";
 const site = lume();
 
 site
-  .use(sharp());
+  .use(sharp({
+    cache: false,
+  }));
 
 export default site;

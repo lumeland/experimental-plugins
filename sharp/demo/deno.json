@@ -1,8 +1,7 @@
 {
   "imports": {
-    "lume/": "https://deno.land/x/lume@v1.19.2/"
+    "lume/": "../../../lume/"
   },
-  "nodeModulesDir": true,
   "tasks": {
     "lume": "echo \"import 'lume/cli.ts'\" | deno run --unstable -A -",
     "build": "deno task lume",
