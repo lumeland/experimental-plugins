@@ -6,7 +6,7 @@
     "serve": "deno task lume -s"
   },
   "compilerOptions": {
-    "jsx": "react-jsx",
+    "jsx": "precompile",
     "jsxFactory": "jsx",
     "jsxFragmentFactory": "Fragment",
     "jsxImportSource": "hono/jsx"
