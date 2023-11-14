@@ -1,1 +1,1 @@
-export { jsx } from "https://deno.land/x/hono@v3.9.1/jsx/index.ts";
+export { jsx } from "https://deno.land/x/hono@v3.10.0/jsx/index.ts";
