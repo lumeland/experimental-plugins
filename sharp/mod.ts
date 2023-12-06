@@ -1,9 +1,13 @@
-import { getPathAndExtension, log, merge } from "lume/core/utils.ts";
+import { getPathAndExtension } from "lume/core/utils/path.ts";
+import { log } from "lume/core/utils/log.ts";
+import { merge } from "lume/core/utils/object.ts";
+import { concurrent } from "lume/core/utils/concurrent.ts";
 import binaryLoader from "lume/core/loaders/binary.ts";
-import sharp from "npm:sharp@0.33.0-alpha.11";
+import sharp from "npm:sharp@0.33.0";
 import Cache from "lume/core/cache.ts";
 
-import type { Page, Site } from "lume/core.ts";
+import type Site from "lume/core/site.ts";
+import type { Page } from "lume/core/file.ts";
 
 export interface Options {
   /** The list extensions this plugin applies to */
@@ -92,7 +96,13 @@ export default function (userOptions?: Partial<Options>) {
       site.options.watcher.ignore.push(cacheFolder);
     }
 
-    async function process(page: Page, pages: Page[]) {
+    async function process(pages: Page[], allPages: Page[]) {
+      await concurrent(
+        pages,
+        async (page) => processPage(page, allPages),
+      );
+    }
+    async function processPage(page: Page, allPages: Page[]) {
       const transData = page.data[options.name] as
         | Transformation
         | Transformation[]
@@ -139,7 +149,7 @@ export default function (userOptions?: Partial<Options>) {
         }
 
         if (output !== page) {
-          pages.push(output);
+          allPages.push(output);
         }
       }
 
@@ -148,7 +158,7 @@ export default function (userOptions?: Partial<Options>) {
       }
 
       // Remove the original page
-      return false;
+      allPages.splice(allPages.indexOf(page), 1);
     }
   };
 }
@@ -159,8 +169,7 @@ async function transform(
   transformation: Transformation,
   options: Options,
 ): Promise<void> {
-  let format: Format | undefined = undefined;
-  const image = await sharp(content);
+  const image = sharp(content);
 
   for (const [name, args] of Object.entries(transformation)) {
     switch (name) {
@@ -170,7 +179,6 @@ async function transform(
 
       case "format":
         image[args as Format]();
-        format = args;
         break;
 
       default:
