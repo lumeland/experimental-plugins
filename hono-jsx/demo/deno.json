@@ -7,8 +7,6 @@
   },
   "compilerOptions": {
     "jsx": "precompile",
-    "jsxFactory": "jsx",
-    "jsxFragmentFactory": "Fragment",
     "jsxImportSource": "hono/jsx"
   }
 }

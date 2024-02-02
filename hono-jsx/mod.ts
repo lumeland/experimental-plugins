@@ -1,15 +1,21 @@
-import { jsx } from "./deps.ts";
 import loader from "lume/core/loaders/module.ts";
-import { merge } from "lume/core/utils.ts";
-
-import type { Data, Engine, Helper, Site } from "lume/core.ts";
+import type { Engine, Helper } from "lume/core/renderer.ts";
+import type Site from "lume/core/site.ts";
+import { merge } from "lume/core/utils/object.ts";
+import { jsx, specifier } from "./deps.ts";
 
 export interface Options {
   /** The list of extensions this plugin applies to */
-  extensions: string[] | {
-    pages: string[];
-    components: string[];
-  };
+  extensions?: string[];
+
+  /** Optional sub-extension for page files */
+  pageSubExtension?: string;
+
+  /**
+   * Custom includes path
+   * @default `site.options.includes`
+   */
+  includes?: string;
 }
 
 // Default options
@@ -19,11 +25,19 @@ export const defaults: Options = {
 
 /** Template engine to render JSX files using Hono */
 export class HonoJsxEngine implements Engine {
+  jsxImportSource = specifier;
   helpers: Record<string, Helper> = {};
+  basePath: string;
+  includes: string;
+
+  constructor(basePath: string, includes: string) {
+    this.basePath = basePath;
+    this.includes = includes;
+  }
 
   deleteCache() {}
 
-  async render(content: unknown, data: Data = {}) {
+  async render(content: unknown, data: Record<string, unknown> = {}) {
     // The content is a string, so we have to convert it to a element
     if (typeof content === "string") {
       content = jsx("div", {
@@ -43,14 +57,14 @@ export class HonoJsxEngine implements Engine {
 
     const element = typeof content === "object"
       ? content
-      : (typeof content === "function"
-        ? await content({ ...data, children }, this.helpers)
-        : content);
+      : typeof content === "function"
+      ? await content({ ...data, children }, this.helpers)
+      : content;
 
     return element;
   }
 
-  renderSync(content: unknown, data: Data = {}) {
+  renderComponent(content: unknown, data: Record<string, unknown> = {}) {
     const element = typeof content === "function"
       ? content(data, this.helpers)
       : content;
@@ -64,16 +78,19 @@ export class HonoJsxEngine implements Engine {
 }
 
 /** Register the plugin to support JSX and TSX files */
-export default function (userOptions?: Partial<Options>) {
-  const options = merge(defaults, userOptions);
-  const extensions = Array.isArray(options.extensions)
-    ? { pages: options.extensions, components: options.extensions }
-    : options.extensions;
-
+export default function (userOptions?: Options) {
   return (site: Site) => {
-    const engine = new HonoJsxEngine();
+    const options = merge(
+      { ...defaults, includes: site.options.includes },
+      userOptions,
+    );
 
-    site.loadPages(extensions.pages, loader, engine);
-    site.loadComponents(extensions.components, loader, engine);
+    const engine = new HonoJsxEngine(site.src("/"), options.includes);
+
+    site.loadPages(options.extensions, {
+      loader,
+      engine,
+      pageSubExtension: options.pageSubExtension,
+    });
   };
 }
