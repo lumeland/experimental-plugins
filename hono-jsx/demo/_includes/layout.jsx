@@ -6,8 +6,6 @@ export default ({ children, title }) => (
     <body>
       <main>
         {children}
-
-        Hello world
       </main>
     </body>
   </html>

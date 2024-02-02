@@ -3,7 +3,6 @@ import honojsx from "../mod.ts";
 
 const site = lume();
 
-site
-  .use(honojsx());
+site.use(honojsx());
 
 export default site;
