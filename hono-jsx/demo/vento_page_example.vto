@@ -1,0 +1,21 @@
+---
+layout: layout.jsx
+title: Vento Page + Hono JSX Component Example
+---
+
+<div>
+  <h1>{{title}}</h1>
+
+  <p>This page is written in Vento.</p> 
+  <p>It contains some HTML, along with a JSX component displaying the source code for this page.</p>
+  <p>It uses the JSX layout defined in <strong>_includes/layout.vto</strong></p>
+
+
+  {{ 
+    comp.SmallTestComponent({
+      language: "javascript",
+      path: "vento_page_example.vto"
+    })
+  }}
+
+</div>
