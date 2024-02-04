@@ -1,2 +1,2 @@
-export { jsx } from "npm:hono@3.12.9/jsx/jsx-runtime";
-export const specifier = "npm:hono@3.12.9";
+export { jsx } from "https://deno.land/x/hono@v3.12.10/jsx/jsx-runtime.ts";
+export const specifier = "hono/jsx";
