@@ -1,6 +1,6 @@
 {
   "imports": {
     "lume/": "https://deno.land/x/lume@v2.0.3/",
-    "hono/jsx/jsx-runtime": "npm:hono@3.12.9/jsx/jsx-runtime"
+    "hono/jsx/jsx-runtime": "https://deno.land/x/hono@v3.12.10/jsx/jsx-runtime.ts"
   }
 }
