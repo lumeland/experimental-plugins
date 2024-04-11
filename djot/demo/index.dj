@@ -1,0 +1,15 @@
+---
+title: What is Markdoc?
+---
+
+{#hello}
+# Hello world
+
+- a list
+
+    - this is the
+    - djot-specific way
+
+
+{#water}
+This should have id.
