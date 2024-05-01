@@ -1,0 +1,23 @@
+{
+  "imports": {
+    "lume/": "https://deno.land/x/lume@v2.1.4/"
+  },
+  "tasks": {
+    "lume": "echo \"import 'lume/cli.ts'\" | deno run -A -",
+    "build": "deno task lume",
+    "serve": "deno task lume -s"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:react",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns"
+    ],
+    "types": [
+      "lume/types.ts"
+    ]
+  }
+}
