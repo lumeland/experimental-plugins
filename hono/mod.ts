@@ -2,7 +2,7 @@ import loader from "lume/core/loaders/module.ts";
 import type { Engine, Helper } from "lume/core/renderer.ts";
 import type Site from "lume/core/site.ts";
 import { merge } from "lume/core/utils/object.ts";
-import { jsx, specifier } from "./deps.ts";
+import { html, jsx, specifier } from "./deps.ts";
 
 export interface Options {
   /** The list of extensions this plugin applies to */
@@ -78,19 +78,28 @@ export class HonoJsxEngine implements Engine {
 }
 
 /** Register the plugin to support JSX and TSX files */
-export default function (userOptions?: Options) {
-  return (site: Site) => {
-    const options = merge(
-      { ...defaults, includes: site.options.includes },
-      userOptions,
-    );
+export default (userOptions?: Options) => (site: Site) => {
+  const options = merge(
+    { ...defaults, includes: site.options.includes },
+    userOptions,
+  );
 
-    const engine = new HonoJsxEngine(site.src("/"), options.includes);
+  const engine = new HonoJsxEngine(site.src("/"), options.includes);
 
-    site.loadPages(options.extensions, {
+  site
+    .helper("html", html, { type: "tag" })
+    .loadPages(options.extensions, {
       loader,
       engine,
       pageSubExtension: options.pageSubExtension,
     });
-  };
+};
+
+/** Extends Helpers interface */
+declare global {
+  namespace Lume {
+    export interface Helpers {
+      html: typeof html;
+    }
+  }
 }
