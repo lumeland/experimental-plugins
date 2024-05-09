@@ -1,29 +1,30 @@
-import { DeepPartial, merge } from "lume/core/utils.ts";
-import puppeteer from "npm:puppeteer@21.0.3";
-import { Cache } from "npm:@puppeteer/browsers@1.6.0";
+import { DeepPartial, merge } from "lume/core/utils/object.ts";
+import puppeteer from "npm:puppeteer@22.8.0";
+import { Cache } from "npm:@puppeteer/browsers@2.2.3";
 
-import type { Plugin, Site } from "lume/core.ts";
+import "lume/types.ts";
 
 export interface Options {
   /** The extensions */
   extensions: string[];
   browser: "chrome" | "firefox";
   cacheDirectory: string;
-  callback: (page) => Promise<void>;
+  callback: (page: Lume.Page) => Promise<void>;
 }
 
 export const defaults: Options = {
   extensions: [".html"],
   browser: "chrome",
-  cacheDirectory: "./_bin/puppeteer",
+  cacheDirectory: "_cache/puppeteer",
+  callback: async (page) => {},
 };
 
 export default function (userOptions: DeepPartial<Options> = {}): Plugin {
   const options = merge(defaults, userOptions);
 
-  return (site: Site) => {
-    site.processAll(options.extensions, async (pages) => {
-      const cacheDirectory = site.src(options.cacheDirectory);
+  return (site: Lume.Site) => {
+    site.process(options.extensions, async (pages) => {
+      const cacheDirectory = site.root(options.cacheDirectory);
 
       // Install the binaries if they are not already installed
       try {

@@ -1,4 +1,5 @@
 _site
+_cache
 _bin
 deno.lock
 node_modules
