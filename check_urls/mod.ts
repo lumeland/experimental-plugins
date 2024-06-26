@@ -3,8 +3,7 @@ import type Site from "lume/core/site.ts";
 import type { Page } from "lume/core/file.ts";
 
 // todo:
-// - make file extension configurable
-// - make code simpler
+// - share URL scanning logic with modify_urls
 
 export interface Options {
   /** The list of extensions this plugin applies to */
