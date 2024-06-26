@@ -33,10 +33,11 @@ export default function (userOptions?: Options) {
       if (full_url.origin != url_site.origin) {
         return;
       }
-      full_url.hash = '' // doesn't check hash, sorry
+      full_url.hash = '' // doesn't check hash
+      full_url.search = '' // doesn't check search either
 
       if (!urls.has(full_url.toString())) {
-        console.warn(`Found broken link: ${page.data.url} -> ${url}`);
+        console.warn(`⛓️‍💥 ${page.data.url} -> ${url}`);
       }
 
       return;
