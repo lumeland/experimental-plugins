@@ -2,9 +2,6 @@ import { merge } from "lume/core/utils/object.ts";
 import type Site from "lume/core/site.ts";
 import type { Page } from "lume/core/file.ts";
 
-// todo:
-// - share URL scanning logic with modify_urls
-
 export interface Options {
   /** The list of extensions this plugin applies to */
   extensions?: string[];
@@ -22,7 +19,7 @@ export default function (userOptions?: Options) {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
-    const url_base = site.options.location;
+    const url_site = site.options.location;
     const urls = new Set<string>(); // Set is more performant than arrays
 
     function scan(
@@ -30,8 +27,10 @@ export default function (userOptions?: Options) {
       page: Page,
       _element: Element,
     ): undefined {
-      const full_url = new URL(url, url_base);
-      if (full_url.origin != url_base.origin) {
+      if (url == null) return;
+
+      const full_url = new URL(url, new URL(page.data.url, url_site));
+      if (full_url.origin != url_site.origin) {
         return;
       }
 
@@ -47,7 +46,7 @@ export default function (userOptions?: Options) {
       page: Page,
       element: Element,
     ): undefined {
-      const srcset = attr ? attr.trim().split(",") : [];
+      const srcset = attr != null ? attr.trim().split(",") : [];
       for (const src of srcset) {
         const [, url, _rest] = src.trim().match(/^(\S+)(.*)/)!;
         scan(url, page, element);
@@ -57,7 +56,7 @@ export default function (userOptions?: Options) {
     site.process("*", (pages) => {
       urls.clear(); // Clear on rebuild
       for (const page of pages) {
-        urls.add(new URL(page.data.url, url_base).toString()); // site.url() return the full url if the second argument is true
+        urls.add(new URL(page.data.url, url_site).toString()); // site.url() return the full url if the second argument is true
       }
       for (const file of site.files) {
         urls.add(site.url(file.outputPath, true));
