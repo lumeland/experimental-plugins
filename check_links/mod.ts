@@ -18,24 +18,27 @@ export default function (userOptions?: Options) {
   const options = merge(defaults, userOptions);
 
   return (site: Site) => {
+    const url_base = site.options.location;
+    const urls = new Set<string>(); // Set is more performant than arrays
+
+    site.process("*", (pages) => {
+      urls.clear(); // Clear on rebuild
+      for (const page of pages) {
+        urls.add(new URL(page.data.url, url_base).toString()); // site.url() return the full url if the second argument is true
+      }
+      for (const file of site.files) {
+        urls.add(site.url(file.outputPath, true));
+      }
+    });
+
     site.use(modifyUrls({
       fn(url, page, _element) {
-        const url_base = site.options.location;
-        const urls: string[] = [];
-        for (const page of site.pages) {
-          urls.push(new URL(page.data.url, url_base).toString());
-        }
-        for (const file of site.files) {
-          urls.push(new URL(file.outputPath, url_base).toString());
-        }
-        // console.log(urls)
-
         const full_url = new URL(url, url_base);
         if (full_url.origin != url_base.origin) {
           return url;
         }
 
-        if (!urls.includes(full_url.toString())) {
+        if (!urls.has(full_url.toString())) {
           console.warn(`Found broken link: ${page.data.url} -> ${url}`);
         }
 
