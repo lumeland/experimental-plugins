@@ -33,6 +33,7 @@ export default function (userOptions?: Options) {
       if (full_url.origin != url_site.origin) {
         return;
       }
+      full_url.hash = '' // doesn't check hash, sorry
 
       if (!urls.has(full_url.toString())) {
         console.warn(`Found broken link: ${page.data.url} -> ${url}`);
