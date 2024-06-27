@@ -1,3 +1,5 @@
+// To-do: When merging the plugin into the core, move the duplicated code with modify_urls to a shared function
+
 import { merge } from "lume/core/utils/object.ts";
 import type Site from "lume/core/site.ts";
 import type { Page } from "lume/core/file.ts";
@@ -25,7 +27,6 @@ export default function (userOptions?: Options) {
     function scan(
       url: string | null,
       page: Page,
-      _element: Element,
     ): undefined {
       if (url == null) return;
 
@@ -33,8 +34,8 @@ export default function (userOptions?: Options) {
       if (full_url.origin != url_site.origin) {
         return;
       }
-      full_url.hash = '' // doesn't check hash
-      full_url.search = '' // doesn't check search either
+      full_url.hash = ""; // doesn't check hash
+      full_url.search = ""; // doesn't check search either
 
       if (!urls.has(full_url.toString())) {
         console.warn(`⛓️‍💥 ${page.data.url} -> ${url}`);
@@ -46,12 +47,11 @@ export default function (userOptions?: Options) {
     function scanSrcset(
       attr: string | null,
       page: Page,
-      element: Element,
     ): undefined {
       const srcset = attr != null ? attr.trim().split(",") : [];
       for (const src of srcset) {
         const [, url, _rest] = src.trim().match(/^(\S+)(.*)/)!;
-        scan(url, page, element);
+        scan(url, page);
       }
     }
 
@@ -76,22 +76,21 @@ export default function (userOptions?: Options) {
           }
 
           for (const element of document.querySelectorAll("[href]")) {
-            scan(element.getAttribute("href"), page, element);
+            scan(element.getAttribute("href"), page);
           }
 
           for (const element of document.querySelectorAll("[src]")) {
-            scan(element.getAttribute("src"), page, element);
+            scan(element.getAttribute("src"), page);
           }
 
           for (const element of document.querySelectorAll("video[poster]")) {
-            scan(element.getAttribute("poster"), page, element);
+            scan(element.getAttribute("poster"), page);
           }
 
           for (const element of document.querySelectorAll("[srcset]")) {
             scanSrcset(
               element.getAttribute("srcset"),
               page,
-              element,
             );
           }
 
@@ -99,7 +98,6 @@ export default function (userOptions?: Options) {
             scanSrcset(
               element.getAttribute("imagesrcset"),
               page,
-              element,
             );
           }
         }),
