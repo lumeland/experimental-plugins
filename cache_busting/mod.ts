@@ -1,11 +1,11 @@
 import binaryLoader from "lume/core/loaders/binary.ts";
-import { getPathAndExtension, merge } from "lume/core/utils.ts";
-import { encode } from "lume/deps/hex.ts";
+import { getPathAndExtension } from "lume/core/utils/path.ts";
+import { merge } from "lume/core/utils/object.ts";
+import { encodeHex } from "lume/deps/hex.ts";
 import { posix } from "lume/deps/path.ts";
 import modifyUrls from "lume/plugins/modify_urls.ts";
 
-import type { Page, Plugin, Site } from "lume/core.ts";
-import type { Element } from "lume/deps/dom.ts";
+import "lume/types.ts";
 
 export interface Options {
   /** Attribute used to select the elements this plugin applies to */
@@ -27,12 +27,16 @@ const cache = new Map<string, Promise<string>>();
 export default function (userOptions?: Partial<Options>): Plugin {
   const options = merge(defaults, userOptions);
 
-  return (site: Site) => {
+  return (site: Lume.Site) => {
     const selector = `[${options.attribute}]`;
 
     site.use(modifyUrls({ fn: replace }));
 
-    async function replace(url: string | null, page: Page, element: Element) {
+    async function replace(
+      url: string | null,
+      page: Lume.Page,
+      element: Element,
+    ) {
       if (url && element.matches(selector)) {
         return await addHash(url, page);
       }
@@ -104,8 +108,7 @@ export default function (userOptions?: Partial<Options>): Plugin {
 
     async function getContentHash(content: Uint8Array): Promise<string> {
       const hashBuffer = await crypto.subtle.digest("SHA-1", content);
-      const hex = encode(new Uint8Array(hashBuffer));
-      const hash = new TextDecoder().decode(hex);
+      const hash = encodeHex(new Uint8Array(hashBuffer));
       return hash.substring(0, options.hashLength);
     }
   };
