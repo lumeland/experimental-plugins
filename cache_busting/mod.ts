@@ -24,7 +24,7 @@ export const defaults: Options = {
 const cache = new Map<string, Promise<string>>();
 
 /** A plugin to add cache busting hashes to all URLs found in HTML documents. */
-export default function (userOptions?: Partial<Options>): Plugin {
+export default function (userOptions?: Partial<Options>): Lume.Plugin {
   const options = merge(defaults, userOptions);
 
   return (site: Lume.Site) => {
