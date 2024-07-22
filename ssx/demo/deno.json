@@ -1,0 +1,18 @@
+{
+  "imports": {
+    "lume/": "https://deno.land/x/lume@v2.2.4/",
+    "ssx/jsx-runtime": "https://deno.land/x/ssx@v0.1.0/jsx-runtime.ts"
+  },
+  "tasks": {
+    "lume": "echo \"import 'lume/cli.ts'\" | deno run -A -",
+    "build": "deno task lume",
+    "serve": "deno task lume -s"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "ssx",
+    "types": [
+      "lume/types.ts"
+    ]
+  }
+}
