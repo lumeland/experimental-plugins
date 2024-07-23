@@ -1,4 +1,4 @@
-import "https://deno.land/x/ssx@v0.1.0/jsx-runtime.ts";
+import "https://deno.land/x/ssx@v0.1.1/jsx-runtime.ts";
 import loader from "lume/core/loaders/module.ts";
 import { merge } from "lume/core/utils/object.ts";
 
