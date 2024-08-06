@@ -2,7 +2,11 @@
   "imports": {
     "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@7fe712a6586d5e6343f0dbd9af1b2e17d5316831/"
   },
-  "lock": false,
+  "tasks": {
+    "lume": "echo \"import 'lume/cli.ts'\" | deno run -A -",
+    "build": "deno task lume",
+    "serve": "deno task lume -s"
+  },
   "compilerOptions": {
     "types": [
       "lume/types.ts"
