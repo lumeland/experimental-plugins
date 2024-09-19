@@ -1,13 +1,23 @@
-{{ for child of nav.menu("", "", "order=asc").children }}
-{{ child.data.order }}{{ child.data.content }}
+<ul>
+  {{ for child of nav.menu("", "", "order=asc").children }}
+  <li>
+    {{ child.data.order }} - {{ child.data.content }}
 
-{{ for child1 of child.children }}
-{{ child1.data?.order }}{{ child1.data?.content }}
+    <ul>
+    {{ for child1 of child.children }}
+      <li>
+      {{ child1.data?.order }} - {{ child1.data?.content }}
 
-{{ for child2 of child1.children }}
-{{ child2.data?.order }}{{ child2.data?.content }}
-{{ /for }}
+      <ul>
+      {{ for child2 of child1.children }}
+        <li>{{ child2.data?.order }} - {{ child2.data?.content }}</li>
+      {{ /for }}
+      </ul>
 
-{{ /for }}
+      </li>
+    {{ /for }}
+    </ul>
 
-{{ /for }}
+  </li>
+  {{ /for }}
+</ul>
