@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "vue": "npm:vue",
+    "lume/": "https://deno.land/x/lume@v2.3.2/"
+  }
+}
