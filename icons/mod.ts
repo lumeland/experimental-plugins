@@ -1,10 +1,17 @@
 import { readFile } from "lume/core/utils/read.ts";
+import { merge } from "lume/core/utils/object.ts";
+import { posix } from "lume/deps/path.ts";
 
 interface Catalog {
   id: string;
   src: string;
-  name?: (name: string, variant?: string) => string;
-  variants?: string[] | ((variant?: string) => string);
+  name?: (name: string, variant?: Variant) => string;
+  variants?: (Variant | string)[];
+}
+
+interface Variant {
+  key: string;
+  path: string;
 }
 
 export const catalogs: Catalog[] = [
@@ -15,22 +22,12 @@ export const catalogs: Catalog[] = [
   {
     id: "heroicons",
     src: "https://cdn.jsdelivr.net/npm/heroicons@2.1.5/{variant}/{name}.svg",
-    variants(variant: string = "outline") {
-      switch (variant) {
-        case "outline":
-          return "24/outline";
-        case "solid":
-          return "24/solid";
-        case "minimal":
-          return "20/solid";
-        case "micro":
-          return "16/solid";
-        default:
-          throw new Error(
-            `Variant "${variant}" not found in catalog "heroicons"`,
-          );
-      }
-    },
+    variants: [
+      { key: "outline", path: "24/outline" },
+      { key: "solid", path: "24/solid" },
+      { key: "minimal", path: "20/solid" },
+      { key: "micro", path: "16/solid" },
+    ],
   },
   {
     id: "lucide",
@@ -92,8 +89,8 @@ export const catalogs: Catalog[] = [
     id: "phosphor",
     src:
       "https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/{variant}/{name}.svg",
-    name(name: string, variant?: string) {
-      const suffix = variant === "regular" ? "" : `-${variant}`;
+    name(name: string, variant?: Variant) {
+      const suffix = variant?.key === "regular" ? "" : `-${variant?.key}`;
       return `${name}${suffix}`;
     },
     variants: ["bold", "duotone", "fill", "light", "regular", "thin"],
@@ -115,49 +112,107 @@ export const catalogs: Catalog[] = [
   },
 ];
 
-export function icons() {
+export interface Options {
+  folder?: string;
+  catalogs: Catalog[];
+}
+export const defaults: Options = {
+  folder: "icons",
+  catalogs,
+};
+
+export function icons(userOptions?: Options) {
+  const options = merge(defaults, userOptions);
+
   return (site: Lume.Site) => {
-    site.filter("icon", helper, true);
+    const icons = new Map<string, string>();
+    site.filter("icon", icon);
+
+    function icon(key: string, catalogId: string, rest?: string) {
+      const catalog = catalogs.find((c) => c.id === catalogId);
+
+      if (!catalog) {
+        throw new Error(`Catalog "${catalogId}" not found`);
+      }
+
+      const [name, variant] = getNameAndVariant(catalog, key, rest);
+
+      const file = iconPath(options.folder, catalog, name, variant);
+      const url = iconUrl(catalog, name, variant);
+      icons.set(file, url);
+      return file;
+    }
+
+    site.addEventListener("afterRender", async () => {
+      for (const [file, url] of icons) {
+        const content = await readFile(url);
+        const page = await site.getOrCreatePage(file);
+        page.content = content;
+      }
+    });
   };
 }
 
 export default icons;
 
-async function helper(name: string, catalogId: string, variant?: string) {
-  const catalog = catalogs.find((c) => c.id === catalogId);
-
-  if (!catalog) {
-    throw new Error(`Catalog "${catalogId}" not found`);
-  }
-
-  if (variant) {
-    return await readIcon(catalog, name, variant);
-  }
-
-  const [n, v] = name.split(":");
-  return await readIcon(catalog, n, v);
+function iconPath(
+  folder: string,
+  catalog: Catalog,
+  name: string,
+  variant?: Variant,
+): string {
+  const file = `${catalog.id}/${name}${variant ? `-${variant.key}` : ""}.svg`;
+  return posix.join(folder, file);
 }
 
-function readIcon(catalog: Catalog, name: string, variant?: string) {
-  if (typeof catalog.variants === "function") {
-    variant = catalog.variants(variant);
-  } else if (Array.isArray(catalog.variants)) {
-    if (!variant) {
-      variant = catalog.variants[0];
-    } else if (!catalog.variants.includes(variant)) {
-      throw new Error(
-        `Variant "${variant}" not found in catalog "${catalog.id}"`,
-      );
-    }
+function getNameAndVariant(
+  catalog: Catalog,
+  name: string,
+  variant?: string,
+): [string, Variant | undefined] {
+  if (!variant) {
+    [name, variant] = name.split(":");
   }
 
+  if (!variant) {
+    if (catalog.variants) { // Returns the first variant
+      const first = catalog.variants[0];
+      return [
+        name,
+        typeof first === "string" ? { key: first, path: first } : first,
+      ];
+    }
+
+    return [name, undefined];
+  }
+
+  if (!catalog.variants) {
+    throw new Error(`Catalog "${catalog.id}" does not support variants`);
+  }
+
+  const found = catalog.variants.find((v) => {
+    return [name, typeof v === "string" ? v === variant : v.key === variant];
+  });
+
+  if (!found) {
+    throw new Error(
+      `Variant "${variant}" not found in catalog "${catalog.id}"`,
+    );
+  }
+
+  return [
+    name,
+    typeof found === "string" ? { key: found, path: found } : found,
+  ];
+}
+
+function iconUrl(catalog: Catalog, name: string, variant?: Variant): string {
   if (catalog.name) {
     name = catalog.name(name, variant);
   }
 
-  const url = catalog.src.replace("{name}", name).replace(
+  return catalog.src.replace("{name}", name).replace(
     "{variant}",
-    variant ?? "",
+    variant ? variant.path : "",
   );
-  return readFile(url);
 }
