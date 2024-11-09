@@ -1,5 +1,5 @@
 import type { Middleware, RequestHandler } from "lume/core.ts";
-import { isPlainObject, merge } from "lume/core/utils.ts";
+import { isPlainObject, merge } from "lume/core/utils/";
 
 const DEFAULT_MAX_AGE = 365 * 86400;
 
