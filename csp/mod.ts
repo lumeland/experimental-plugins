@@ -1,10 +1,6 @@
 import type { Middleware, RequestHandler } from "lume/core/server.ts";
 import { isPlainObject, merge } from "lume/core/utils/object.ts";
 
-//import { readFile } from "lume/core/utils/read.ts";
-//import { merge } from "lume/core/utils/object.ts";
-//import { posix } from "lume/deps/path.ts";
-
 const DEFAULT_MAX_AGE = 365 * 86400;
 
 interface StrictTransportSecurityOptions {
