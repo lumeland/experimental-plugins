@@ -6,10 +6,33 @@ const router = new Router({
   location: "http://localhost:8000",
 });
 
-router.get("/", () =>
-  Response.json({
-    message: "Hello, world!",
-  }));
+router.get("/", () => {
+  return new Response(
+    `
+    <html>
+      <head>
+        <title>Router demo</title>
+      </head>
+      <body>
+        <form method="post" action="/say">
+          <label for="name">Name:</label>
+          <input type="text" name="name" id="name">
+          <button type="submit">Say hello</button>
+        </form>
+      </body>
+    `,
+    {
+      headers: {
+        "Content-Type": "text/html",
+      },
+    },
+  );
+});
+
+router.post("/say", async ({ request }) => {
+  const name = (await request.formData()).get("name");
+  return new Response(`Hello, ${name}!`);
+});
 
 router.get("/hello/:name", ({ name }) =>
   Response.json({

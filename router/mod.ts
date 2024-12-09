@@ -1,8 +1,14 @@
 import "lume/types.ts";
 
-type RouteHandler<T = Record<string, unknown>> = (
-  data: T,
+interface RouterParams {
+  request: Request;
+  [key: string]: unknown;
+}
+
+type RouteHandler<T = RouterParams> = (
+  params: T,
 ) => Response | Promise<Response>;
+
 type HTTPMethod = "GET" | "POST" | "PUT" | "DELETE";
 
 interface RouteDefinition {
@@ -61,7 +67,7 @@ export default class Router {
         Object.assign(data, result.pathname?.groups);
         Object.assign(data, result.search?.groups);
 
-        return await handler(data);
+        return await handler({ ...data, request });
       }
     }
   }
