@@ -22,12 +22,22 @@ export default function App() {
 
   const [state, setState] = useState<State>({
     filter: ALL_TODOS,
-    todos: readStore(namespace),
+    todos: [],
   });
 
   useEffect(() => {
+    const todos = readStore(namespace);
+    if (todos) {
+      setState({
+        ...state,
+        todos,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     writeStore(namespace, state.todos);
-  });
+  }, [state.todos]);
 
   const activeTodoCount = state.todos.filter((todo) => !todo.completed).length;
   const completedCount = state.todos.length - activeTodoCount;
