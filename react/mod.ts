@@ -2,7 +2,7 @@ import { Page } from "lume/core/file.ts";
 import { merge } from "lume/core/utils/object.ts";
 import esbuild from "lume/plugins/esbuild.ts";
 import sourceMaps from "lume/plugins/source_maps.ts";
-import { basename } from "lume/deps/path.ts";
+import { basename, toFileUrl } from "lume/deps/path.ts";
 import "lume/types.ts";
 import { React, ReactDOMServer } from "lume/deps/react.ts";
 
@@ -62,7 +62,7 @@ export default function (userOptions?: Partial<Options>) {
           page.document!.body.appendChild(script);
 
           if (hydrate) {
-            const appPath = "./" + basename(site.root()) + src; // TOOD: fix path when releasing plugin
+            const appPath = toFileUrl(site.src(src)).href;
             import(`${appPath}`).then((App) => {
               const html = ReactDOMServer.renderToString(
                 React.createElement(App.default),
