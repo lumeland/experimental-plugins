@@ -4,6 +4,7 @@ import esbuild from "lume/plugins/esbuild.ts";
 import sourceMaps from "lume/plugins/source_maps.ts";
 import { basename } from "lume/deps/path.ts";
 import "lume/types.ts";
+import { React, ReactDOMServer } from "lume/deps/react.ts";
 
 export interface Options {
   /** The list extensions this plugin applies to */
@@ -59,6 +60,16 @@ export default function (userOptions?: Partial<Options>) {
           script.setAttribute("type", "module");
           script.setAttribute("src", mainUrl.replace(".tsx", ".js"));
           page.document!.body.appendChild(script);
+
+          if (hydrate) {
+            const appPath = "./" + basename(site.root()) + src; // TOOD: fix path when releasing plugin
+            import(`${appPath}`).then((App) => {
+              const html = ReactDOMServer.renderToString(
+                React.createElement(App.default),
+              );
+              app.innerHTML = html;
+            });
+          }
         }
       }
     });
