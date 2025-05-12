@@ -1,4 +1,3 @@
-import binaryLoader from "lume/core/loaders/binary.ts";
 import { getPathAndExtension } from "lume/core/utils/path.ts";
 import { merge } from "lume/core/utils/object.ts";
 import { encodeHex } from "lume/deps/hex.ts";
@@ -35,16 +34,16 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
     async function replace(
       url: string | null,
       page: Lume.Page,
-      element: Element,
+      element?: Element,
     ) {
-      if (url && element.matches(selector)) {
+      if (url && element?.matches(selector)) {
         return await addHash(url, page);
       }
 
       return "";
     }
 
-    async function addHash(url: string, page: Page) {
+    async function addHash(url: string, page: Lume.Page) {
       // Resolve relative URLs
       if (page.data.url && url.startsWith(".")) {
         url = posix.join(page.data.url, url);
@@ -75,7 +74,7 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
     }
 
     async function getFileContent(url: string): Promise<Uint8Array> {
-      const content = await site.getContent(url, binaryLoader);
+      const content = await site.getContent(url, true);
 
       if (!content) {
         throw new Error(`Unable to find the file "${url}"`);
@@ -85,21 +84,13 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
     }
 
     function renameFile(url: string, hash: string) {
-      // It's a page
-      const page = site.pages.find((page) => page.data.url === url);
+      // It's a page or static file
+      const file = site.pages.find((page) => page.data.url === url)
+        ?? site.files.find((file) => file.data.url === url)
 
-      if (page) {
+      if (file) {
         const [path, ext] = getPathAndExtension(url);
-        page.data.url = `${path}-${hash}${ext}`;
-        return;
-      }
-
-      // It's a static file
-      const staticFile = site.files.find((file) => file.outputPath === url);
-
-      if (staticFile) {
-        const [path, ext] = getPathAndExtension(url);
-        staticFile.outputPath = `${path}-${hash}${ext}`;
+        file.data.url = `${path}-${hash}${ext}`;
         return;
       }
 
