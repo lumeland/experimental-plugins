@@ -40,7 +40,7 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
         return await addHash(url, page);
       }
 
-      return "";
+      return url ?? "";
     }
 
     async function addHash(url: string, page: Lume.Page) {
