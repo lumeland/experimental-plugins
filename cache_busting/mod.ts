@@ -85,8 +85,8 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
 
     function renameFile(url: string, hash: string) {
       // It's a page or static file
-      const file = site.pages.find((page) => page.data.url === url)
-        ?? site.files.find((file) => file.data.url === url)
+      const file = site.pages.find((page) => page.data.url === url) ??
+        site.files.find((file) => file.data.url === url);
 
       if (file) {
         const [path, ext] = getPathAndExtension(url);

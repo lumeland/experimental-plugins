@@ -9,18 +9,18 @@ be removed at any time for several reasons:
 - A new plugin has been created to replace it.
 - It's too unstable or not useful
 
-For these reasons, it's high recommended to import a specific commit, using the
-commit hash in the url
-(`https://raw.githubusercontent.com/lumeland/experimental-plugins/[hash]/[plugin]/mod.ts`)
+For these reasons, it's high recommended to import from jsDelivr and use the
+commit hash as the version
+(`https://cdn.jsdelivr.net/gh/lumeland/experimental-plugins@[commit]/[plugin]/mod.ts`)
 
 For example:
 
 ```js
 // Not recommended
-import plugin from "https://raw.githubusercontent.com/lumeland/experimental-plugins/main/plugin/mod.ts";
+import astralPlugin from "https://raw.githubusercontent.com/lumeland/experimental-plugins/main/astral/mod.ts";
 
 // Recommended
-import plugin from "https://raw.githubusercontent.com/lumeland/experimental-plugins/69b551c39a3000b1feaf0b2d5675b4cde92141c3/plugin/mod.ts";
+import astralPlugin from "https://cdn.jsdelivr.net/gh/lumeland/experimental-plugins@7c42e88e95917ebaf3510d4cece118d68992ff63/astral/mod.ts";
 ```
 
 ## Contributing
