@@ -7,5 +7,12 @@
     "types": [
       "lume/types.ts"
     ]
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-import-prefix"
+      ]
+    }
   }
 }
