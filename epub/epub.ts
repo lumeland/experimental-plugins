@@ -1,4 +1,6 @@
 import { typeByExtension } from "jsr:@std/media-types@1.1.0/type-by-extension";
+import type { Data } from "lume/core/file.ts";
+import type { NavData } from "lume/plugins/nav.ts";
 import {
   stringify,
   type stringifyable,
@@ -62,6 +64,12 @@ export interface Metadata {
   /** Title of the publication */
   title: string;
 
+  /** Subtitle of the publication */
+  subtitle?: string;
+
+  /** File with the cover image */
+  cover?: string;
+
   /** The creators of the publication */
   creator?: (string | Contributor)[];
 
@@ -69,50 +77,34 @@ export interface Metadata {
   subject?: string[];
 
   /** Description of the publication's content. */
-  description: string;
+  description?: string;
 
   /** Name of the publisher */
-  publisher: string;
+  publisher?: string;
 
   /** Names of contributors to the publication */
   contributor?: (string | Contributor)[];
 
   /** Date of publication */
-  date: Date;
+  date?: Date;
 
   /** Language of the publication */
   language?: string;
 
   /** A statement about rights, or a reference to one. */
-  rights: string;
+  rights?: string;
 }
 
-export interface Files {
-  /** Location of the file */
-  href: string;
-
-  /**
-   * Unique identifier for the file
-   * If not provided, it will be generated.
-   */
-  id?: string;
-
-  /**
-   * Media type of the file.
-   * If not provided, it will be inferred from the file extension.
-   */
-  mediaType?: string;
-
-  /** Indicates if the file is auxiliary (not present in the linear reading order) */
-  auxiliary?: boolean;
-}
-
-interface ManifestItem {
+export interface ManifestItem {
   id: string;
   href: string;
   mediaType: string;
-  auxiliary: boolean;
+  index: boolean;
+  properties?: Property[];
+  children?: ManifestItem[];
 }
+
+export type Property = "page-spread-left" | "page-spread-right" | "cover-image";
 
 interface SpineItem {
   idref: string;
@@ -121,28 +113,54 @@ interface SpineItem {
 
 export interface OPF {
   metadata: Metadata;
-  files: Files[];
 }
 
-export function createOPF(opf: OPF) {
-  const { metadata, files } = opf;
+export function getManifest(data: Data, metadata: Metadata): ManifestItem {
+  const href = data.page.outputPath.slice(1); // Remove leading /
+  const id = data?.id ?? href.endsWith(".ncx")
+    ? "ncx"
+    : href.replaceAll("/", "-");
+  const extension = href.split(".").pop()?.toLowerCase();
+  const mediaType = extension
+    ? typeByExtension(extension) || "application/octet-stream"
+    : "application/octet-stream";
 
-  const manifest: ManifestItem[] = files.map((file, index) => ({
-    id: file.id ?? `item${index + 1}`,
-    href: file.href,
-    mediaType: file.mediaType ?? getMediaType(file.href),
-    auxiliary: file.auxiliary ?? false,
-  }));
+  const properties: Property[] = Array.isArray(data?.properties)
+    ? data.properties
+    : data?.properties
+    ? [data.properties]
+    : [];
 
+  if (
+    metadata.cover && data.url === metadata.cover &&
+    !properties.includes("cover-image")
+  ) {
+    properties.push("cover-image");
+  }
+
+  return {
+    id,
+    href,
+    mediaType,
+    index: data.index ?? true,
+    properties,
+  };
+}
+
+export function createOPF(metadata: Metadata, manifest: ManifestItem[]) {
   const spine: SpineItem[] = manifest
     .filter((item) => item.mediaType === "application/xhtml+xml")
     .map((item) => ({
       idref: item.id,
-      linear: !item.auxiliary,
+      linear: item.index,
     }));
 
   const ncxItem = manifest.find((item) =>
     item.mediaType === "application/x-dtbncx+xml"
+  );
+
+  const coverItem = manifest.find((item) =>
+    item.properties?.includes("cover-image")
   );
 
   const xmlObj: stringifyable = {
@@ -163,7 +181,7 @@ export function createOPF(opf: OPF) {
           "#text": metadata.identifier,
         },
         "dc:date": {
-          "#text": metadata.date.toISOString(),
+          "#text": metadata.date?.toISOString(),
         },
         "dc:rights": {
           "#text": metadata.rights,
@@ -175,6 +193,10 @@ export function createOPF(opf: OPF) {
         "dc:title": {
           "@id": "title",
           "#text": metadata.title,
+        },
+        "dc:subtitle": {
+          "@id": "subtitle",
+          "#text": metadata.subtitle,
         },
         "dc:description": {
           "@id": "description",
@@ -240,6 +262,18 @@ export function createOPF(opf: OPF) {
             "@property": "schema:accessModeSufficient",
             "#text": "textual",
           },
+          {
+            "@property": "rendition:layout",
+            "#text": "reflowable",
+          },
+          {
+            "@property": "rendition:flow",
+            "#text": "scrolled-doc",
+          },
+          {
+            "@name": "cover",
+            "@content": coverItem ? coverItem.id : undefined,
+          },
         ],
       },
       manifest: {
@@ -248,6 +282,7 @@ export function createOPF(opf: OPF) {
             "@id": item.id,
             "@href": item.href,
             "@media-type": item.mediaType,
+            "@properties": item.properties,
           };
           return manifestItem;
         }),
@@ -289,23 +324,113 @@ export function createContainer(path: string) {
   return stringify(clean(xmlObj));
 }
 
-function getMediaType(file: string): string {
-  const extension = file.split(".").pop()?.toLowerCase();
+export function createEncryption(files: string[]) {
+  const xmlObj: stringifyable = {
+    "@version": "1.0",
+    "@encoding": "UTF-8",
+    encryption: {
+      "@xmlns": "urn:oasis:names:tc:opendocument:xmlns:container",
+      EncryptedData: files.map((file) => ({
+        "@xmlns": "http://www.w3.org/2001/04/xmlenc#",
+        EncryptionMethod: {
+          "@Algorithm": "http://www.idpf.org/2008/embedding",
+        },
+        CipherData: {
+          CipherReference: {
+            "@URI": file,
+          },
+        },
+      })),
+    },
+  };
 
-  if (!extension) {
-    return "application/octet-stream";
+  return stringify(clean(xmlObj));
+}
+
+export function createTocNcx(
+  metadata: Metadata,
+  menu: NavData,
+  files: ManifestItem[],
+) {
+  const status = { order: 1, level: 1 };
+  const cover = files.find((item) => item.properties?.includes("cover-image"));
+  const xmlObj: stringifyable = {
+    "@version": "1.0",
+    "@encoding": "UTF-8",
+    ncx: {
+      "@xmlns": "http://www.daisy.org/z3986/2005/ncx/",
+      "@version": "2005-1",
+      head: {
+        meta: [
+          {
+            "@name": "dtb:uid",
+            "@content": metadata.identifier,
+          },
+          {
+            "@name": "dtb:depth",
+            "@content": "1",
+          },
+          {
+            "@name": "dtb:totalPageCount",
+            "@content": "0",
+          },
+          {
+            "@name": "dtb:maxPageNumber",
+            "@content": "0",
+          },
+          {
+            "@name": "cover",
+            "@content": cover ? cover.id : undefined,
+          },
+        ],
+      },
+      docTitle: {
+        text: metadata.title,
+      },
+      docAuthor: {
+        text: metadata.creator?.map((creator) =>
+          typeof creator === "string" ? creator : creator.name
+        ).join(", "),
+      },
+      navMap: {
+        navPoint: menu.children?.map((child) => createNavPoint(child, status)),
+      },
+    },
+  };
+
+  return stringify(clean(xmlObj));
+}
+
+function createNavPoint(
+  menu: NavData,
+  status: { order: number; level: number },
+): stringifyable | undefined {
+  const manifestItem = menu.data.manifestItem as ManifestItem | undefined;
+  if (!manifestItem?.index) {
+    return;
   }
 
-  switch (extension) {
-    case "xhtml":
-    case "html":
-    case "htm":
-      return "application/xhtml+xml";
-    case "ncx":
-      return "application/x-dtbncx+xml";
-    default:
-      return typeByExtension(extension) || "application/octet-stream";
+  const navPoint: stringifyable = {
+    "@id": manifestItem.id,
+    "@playOrder": status.order++,
+    "@class": `h${status.level}`,
+    navLabel: {
+      text: menu.data.title || manifestItem.id,
+    },
+    content: {
+      "@src": manifestItem.href,
+    },
+  };
+
+  if (menu.children && menu.children.length > 0) {
+    status.level++;
+    navPoint.navPoint = menu.children.map((child) =>
+      createNavPoint(child, status)
+    );
+    status.level--;
   }
+
+  return navPoint;
 }
 
 /** Remove undefined values of an object recursively */
@@ -340,3 +465,143 @@ export function isPlainObject(obj: unknown): obj is Record<string, unknown> {
   return typeof obj === "object" && obj !== null &&
     (obj.constructor === objectConstructor || obj.constructor === undefined);
 }
+
+export type EpubType =
+  // Document partitions
+  | "backmatter"
+  | "bodymatter"
+  | "cover"
+  | "frontmatter"
+  // Document divisions
+  | "chapter"
+  | "division"
+  | "part"
+  | "volume"
+  // Document sections and components
+  | "abstract"
+  | "afterword"
+  | "conclusion"
+  | "epigraph"
+  | "epilogue"
+  | "foreword"
+  | "introduction"
+  | "preamble"
+  | "preface"
+  | "prologue"
+  // Document navigation
+  | "landmarks"
+  | "loa"
+  | "loi"
+  | "lot"
+  | "lov"
+  | "toc"
+  // Document reference sections
+  | "appendix"
+  | "colophon"
+  | "credits"
+  // Bibliographies
+  | "bibliography"
+  // Dictionaries
+  | "antonym-group"
+  | "condensed-entry"
+  | "def"
+  | "dictentry"
+  | "dictionary"
+  | "etymology"
+  | "example"
+  | "gram-info"
+  | "idiom"
+  | "part-of-speech"
+  | "part-of-speech-list"
+  | "part-of-speech-group"
+  | "phonetic-transcription"
+  | "phrase-list"
+  | "phrase-group"
+  | "sense-list"
+  | "sense-group"
+  | "synonym-group"
+  | "tran"
+  | "tran-info"
+  // Glossaries
+  | "glossary"
+  | "glossdef"
+  | "glossterm"
+  // Indexes
+  | "index"
+  | "index-editor-note"
+  | "index-entry"
+  | "index-entry-list"
+  | "index-group"
+  | "index-headnotes"
+  | "index-legend"
+  | "index-locator"
+  | "index-locator-list"
+  | "index-locator-range"
+  | "index-term"
+  | "index-term-categories"
+  | "index-term-category"
+  | "index-xref-preferred"
+  | "index-xref-related"
+  // Preliminary sections and components
+  | "acknowledgments"
+  | "contributors"
+  | "copyright-page"
+  | "dedication"
+  | "errata"
+  | "halftitlepage"
+  | "imprimatur"
+  | "imprint"
+  | "other-credits"
+  | "revision-history"
+  | "titlepage"
+  // Complementary content
+  | "notice"
+  | "pullquote"
+  | "tip"
+  // Titles and headings
+  | "covertitle"
+  | "fulltitle"
+  | "halftitle"
+  | "subtitle"
+  | "title"
+  // Educational content
+  // Learning objectives
+  | "learning-objective"
+  | "learning-resource"
+  // Testing
+  | "assessment"
+  | "qna"
+  // Comics
+  | "balloon"
+  | "panel"
+  | "panel-group"
+  | "sound-area"
+  | "text-area"
+  // Notes and annotations
+  | "endnotes"
+  | "footnote"
+  | "footnotes"
+  // References
+  | "backlink"
+  | "biblioref"
+  | "glossref"
+  | "noteref"
+  // Document text
+  | "concluding-sentence"
+  | "credit"
+  | "keyword"
+  | "topic-sentence"
+  // Pagination
+  | "page-list"
+  | "pagebreak"
+  // Tables
+  | "table"
+  | "table-row"
+  | "table-cell"
+  // Lists
+  | "list"
+  | "list-item"
+  // Figures
+  | "figure"
+  // Asides
+  | "aside";

@@ -1,3 +1,5 @@
-# This is the page 1
+---
+title: This is the page 1
+---
 
 Hello, world
