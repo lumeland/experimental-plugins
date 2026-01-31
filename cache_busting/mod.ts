@@ -12,16 +12,12 @@ export interface Options {
 
   /** The length of file hashes to generate */
   hashLength: number;
-
-  /** Apply cache busting to any `url()` encountered in CSS code */
-  applyToCSS: boolean;
 }
 
 // Default options
 export const defaults: Options = {
   attribute: "hash",
   hashLength: 10,
-  applyToCSS: false,
 };
 
 /** A plugin to add cache busting hashes to all URLs found in HTML documents. */
@@ -36,15 +32,45 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
 
     site.addEventListener("beforeUpdate", () => cache.clear());
 
-    async function replace(url: string | null, page: Lume.Page, element?: Element) {
-      const [urlNoFrag, ...urlFrags] = (url ?? "").split("#");
-      if (urlNoFrag && (element?.matches(selector) || (!element && options.applyToCSS))) {
-        element?.removeAttribute(options.attribute);
-        const newUrl = await addHash(urlNoFrag, page);
-        return urlFrags.length ? `${newUrl}#${urlFrags.join("#")}` : newUrl;
+    async function replace(url: string, page: Lume.Page, element?: Element) {
+      const [pathAndQuery, frag] = url.split("#", 2);
+
+      if (!pathAndQuery) {
+        return url;
       }
 
-      return url ?? "";
+      if (element) {
+        // Handle HTML
+
+        if (!element.matches(selector)) {
+          return url;
+        }
+
+        element.removeAttribute(options.attribute);
+        url = await addHash(pathAndQuery, page);
+      } else {
+        // Handle CSS
+
+        const [path, query] = pathAndQuery.split("?", 2);
+
+        if (!query) {
+          return url;
+        }
+
+        const queryParams = new URLSearchParams(query);
+
+        if (!queryParams.has(options.attribute)) {
+          return url;
+        }
+
+        queryParams.delete(options.attribute);
+        const newQuery = queryParams.toString();
+        url = newQuery ? `${path}?${newQuery}` : path;
+        url = await addHash(url, page);
+      }
+
+      url = frag ? `${url}#${frag}` : url;
+      return url;
     }
 
     async function addHash(url: string, page: Lume.Page) {
