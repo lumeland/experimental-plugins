@@ -1,5 +1,5 @@
-import { getPathAndExtension } from "lume/core/utils/path.ts";
 import { merge } from "lume/core/utils/object.ts";
+import { getPathAndExtension } from "lume/core/utils/path.ts";
 import { encodeHex } from "lume/deps/hex.ts";
 import { posix } from "lume/deps/path.ts";
 import modifyUrls from "lume/plugins/modify_urls.ts";
@@ -12,32 +12,36 @@ export interface Options {
 
   /** The length of file hashes to generate */
   hashLength: number;
+
+  /** Apply cache busting to any `url()` encountered in CSS code */
+  applyToCSS: boolean;
 }
 
 // Default options
 export const defaults: Options = {
   attribute: "hash",
   hashLength: 10,
+  applyToCSS: false,
 };
-
-const cache = new Map<string, Promise<string>>();
 
 /** A plugin to add cache busting hashes to all URLs found in HTML documents. */
 export default function (userOptions?: Partial<Options>): Lume.Plugin {
   const options = merge(defaults, userOptions);
 
   return (site: Lume.Site) => {
+    const cache = new Map<string, Promise<string>>();
     const selector = `[${options.attribute}]`;
 
     site.use(modifyUrls({ fn: replace }));
 
-    async function replace(
-      url: string | null,
-      page: Lume.Page,
-      element?: Element,
-    ) {
-      if (url && element?.matches(selector)) {
-        return await addHash(url, page);
+    site.addEventListener("beforeUpdate", () => cache.clear());
+
+    async function replace(url: string | null, page: Lume.Page, element?: Element) {
+      const [urlNoFrag, ...urlFrags] = (url ?? "").split("#");
+      if (urlNoFrag && (element?.matches(selector) || (!element && options.applyToCSS))) {
+        element?.removeAttribute(options.attribute);
+        const newUrl = await addHash(urlNoFrag, page);
+        return urlFrags.length ? `${newUrl}#${urlFrags.join("#")}` : newUrl;
       }
 
       return url ?? "";
@@ -73,19 +77,20 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
       return contentHash;
     }
 
-    async function getFileContent(url: string): Promise<Uint8Array> {
+    async function getFileContent(url: string) {
       const content = await site.getContent(url, true);
 
       if (!content) {
         throw new Error(`Unable to find the file "${url}"`);
       }
 
-      return content as Uint8Array;
+      return content as Uint8Array<ArrayBuffer>;
     }
 
     function renameFile(url: string, hash: string) {
       // It's a page or static file
-      const file = site.pages.find((page) => page.data.url === url) ??
+      const file =
+        site.pages.find((page) => page.data.url === url) ??
         site.files.find((file) => file.data.url === url);
 
       if (file) {
@@ -97,7 +102,7 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
       throw new Error(`Unable to find the file "${url}"`);
     }
 
-    async function getContentHash(content: Uint8Array): Promise<string> {
+    async function getContentHash(content: Uint8Array<ArrayBuffer>): Promise<string> {
       const hashBuffer = await crypto.subtle.digest("SHA-1", content);
       const hash = encodeHex(new Uint8Array(hashBuffer));
       return hash.substring(0, options.hashLength);
