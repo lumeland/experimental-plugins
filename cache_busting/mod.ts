@@ -1,6 +1,5 @@
 import { merge } from "lume/core/utils/object.ts";
 import { getPathAndExtension } from "lume/core/utils/path.ts";
-import { encodeHex } from "lume/deps/hex.ts";
 import { posix } from "lume/deps/path.ts";
 import modifyUrls from "lume/plugins/modify_urls.ts";
 
@@ -130,7 +129,7 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
 
     async function getContentHash(content: Uint8Array<ArrayBuffer>): Promise<string> {
       const hashBuffer = await crypto.subtle.digest("SHA-1", content);
-      const hash = encodeHex(new Uint8Array(hashBuffer));
+      const hash = new Uint8Array(hashBuffer).toHex();
       return hash.substring(0, options.hashLength);
     }
   };
