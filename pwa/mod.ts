@@ -1,9 +1,13 @@
+import sharp, { create } from "lume/deps/sharp.ts";
 import { merge } from "lume/core/utils/object.ts";
 import {
   getDataValue,
   getPlainDataValue,
 } from "lume/core/utils/data_values.ts";
+import { Page } from "lume/core/file.ts";
+import { log } from "lume/core/utils/log.ts";
 
+import type Cache from "lume/core/cache.ts";
 import "lume/types.ts";
 
 export interface AppData {
@@ -38,6 +42,23 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
   const options = merge(defaults, userOptions);
 
   return (site: Lume.Site) => {
+    const { cache } = site;
+
+    /* Copied from favicon */
+    async function getContent(
+      file: string,
+    ): Promise<Uint8Array | string | undefined> {
+      const content = file.endsWith(".svg")
+        ? await site.getContent(file, false)
+        : await site.getContent(file, true);
+
+      if (!content) {
+        log.warn(`[pwa plugin] Input file not found: ${file}`);
+      }
+
+      return content;
+    }
+
     site.process([".html"], async (pages) => {
       const manifest: Partial<Manifest> = {};
 
@@ -64,6 +85,26 @@ export default function (userOptions?: Partial<Options>): Lume.Plugin {
           manifest.theme_color = getDataValue(data, app.color);
           manifest.background_color = getDataValue(data, app.background);
           manifest.categories = getDataValue(data, app.categories);
+          const icon = getDataValue(data, app.icon);
+          const content = icon ? await getContent(icon) : undefined;
+
+          if (content) {
+            manifest.icons = [{
+              sizes: "512x512",
+              src: "/pwa-icon-512.png",
+              type: "image/png",
+            }];
+
+            Page.create({
+              url: "/pwa-icon-512.png",
+              content: await buildIco(
+                content,
+                "png",
+                512,
+                cache,
+              ),
+            });
+          }
           continue;
         }
 
@@ -194,4 +235,35 @@ export interface Manifest {
     };
   };
   shortcuts: Shortcut[];
+}
+
+/* Copied from favicon plugin */
+async function buildIco(
+  content: Uint8Array | string,
+  format: keyof sharp.FormatEnum,
+  size: number,
+  cache?: Cache,
+): Promise<Uint8Array> {
+  if (cache) {
+    const result = await cache.getBytes([content, format, size]);
+
+    if (result) {
+      return result;
+    }
+  }
+
+  const svgOptions = {
+    fitTo: { mode: "width", value: size },
+  } as const;
+
+  const image = await create(content, undefined, svgOptions)
+    .resize(size, size)
+    .toFormat(format)
+    .toBuffer();
+
+  if (cache) {
+    cache.set([content, format, size], image);
+  }
+
+  return image;
 }
