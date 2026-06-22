@@ -3,9 +3,10 @@ title: Vector Exports
 outputs: ["html", "pdf", "svg"]
 url: /typst/vector.html
 ---
-// Conditionally set page dimensions only for PDF/SVG, leaving HTML flexible
 #set page(width: 400pt, height: 200pt, margin: 20pt) if sys.inputs.at("x-target", default: "html") != "html"
-#set text(font: "Inter")
+
+// Use our newly injected remote font!
+#set text(font: "Pacifico", size: 14pt)
 
 = Vector Export Test
 

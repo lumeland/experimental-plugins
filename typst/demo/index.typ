@@ -1,6 +1,7 @@
 ---
 title: "Lume Typst"
 outputs: [html, pdf]
+templateEngine: [vto, typ]
 ---
 #import "_components.typ": alert
 
