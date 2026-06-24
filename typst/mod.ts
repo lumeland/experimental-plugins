@@ -34,6 +34,19 @@ export interface PdfOptions {
   creationTimestamp?: number;
 }
 
+export type SvgMode = "plain" | "rich";
+
+export interface SvgOptions {
+  /**
+   * "plain" flattens text/images into a fully self-contained SVG — required
+   * for static rasterizers (resvg, Sharp/librsvg, ImageMagick). "rich" emits
+   * Typst's deduplicated/optimized SVG — smaller for text-heavy docs, but
+   * only safe when the consumer is a real browser engine.
+   * @default "plain"
+   */
+  mode?: SvgMode;
+}
+
 export interface Options {
   /**
    * File extensions this plugin should handle.
@@ -61,6 +74,8 @@ export interface Options {
     | ((format: OutputFormat, page?: Page) => string | Promise<string>);
   /** Options used when exporting to PDF. */
   pdf?: PdfOptions;
+  /** Options used when exporting to SVG. */
+  svg?: SvgOptions;
 }
 
 // 2. Explicitly type defaults as `Options` instead of using `satisfies Options`
@@ -70,6 +85,7 @@ export const defaults: Options = {
   fonts: [],
   prelude: "",
   pdf: {},
+  svg: { mode: "plain" },
 };
 
 type ResolvedOptions = Omit<Required<Options>, "pageSubExtension"> & {
@@ -249,8 +265,13 @@ export class TypstEngine implements Engine {
 
     try {
       switch (format) {
-        case "svg":
-          return new TextEncoder().encode(compiler.svg(compileArgs));
+        case "svg": {
+          const mode = this.#options.svg?.mode ?? "plain";
+          const out = mode === "rich"
+            ? compiler.svg(compileArgs)
+            : compiler.plainSvg(compileArgs);
+          return new TextEncoder().encode(out);
+        }
         case "pdf": {
           const pdfOpts: RenderPdfOpts | undefined =
             this.#options.pdf && Object.keys(this.#options.pdf).length > 0
