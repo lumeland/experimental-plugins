@@ -111,9 +111,7 @@ export class TypstEngine implements Engine {
     const { entries } = this.#site.fs;
 
     const loadEntry = async (path: string, entry: FsEntry) => {
-      if (loaded.has(path)) {
-        return;
-      }
+      if (loaded.has(path)) return;
       loaded.add(path);
       try {
         const { content } = await entry.getContent(loadBinary);
@@ -125,15 +123,31 @@ export class TypstEngine implements Engine {
 
     for (const font of this.#options.fonts) {
       const path = normalizePath(posix.join("/", font));
-      const entry = entries.get(path);
+      const prefix = path.endsWith("/") ? path : `${path}/`;
+      let found = false;
 
+      // 1. Check dynamically generated Lume pages/files (e.g., from google_fonts)
+      for (const file of [...this.#site.pages, ...this.#site.files]) {
+        const url = file.data.url as string | undefined;
+        if (
+          url &&
+          (url === path || url.startsWith(prefix)) &&
+          FONT_EXTS.has(posix.extname(url))
+        ) {
+          if (file.content instanceof Uint8Array && !loaded.has(url)) {
+            blobs.push(Buffer.from(file.content));
+            loaded.add(url);
+            found = true;
+          }
+        }
+      }
+
+      // 2. Check Lume's virtual filesystem (local source files & site.remoteFile)
+      const entry = entries.get(path);
       if (entry?.type === "file") {
         await loadEntry(path, entry);
         continue;
       }
-
-      const prefix = path.endsWith("/") ? path : `${path}/`;
-      let found = false;
 
       for (const [entryPath, childEntry] of entries) {
         if (
@@ -143,13 +157,16 @@ export class TypstEngine implements Engine {
         ) {
           continue;
         }
-
         found = true;
         await loadEntry(entryPath, childEntry);
       }
 
       if (!entry && !found) {
-        log.error(`[typst plugin] Font path "${font}" was not found.`);
+        // Downgrade to a warning, as plugins like google_fonts might not
+        // have generated the fonts on the very first initialization pass
+        log.warn(
+          `[typst plugin] Font path "${font}" was not found in source or generated files.`,
+        );
       }
     }
 
