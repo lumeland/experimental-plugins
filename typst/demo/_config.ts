@@ -3,10 +3,14 @@ import typst from "../mod.ts";
 
 const site = lume();
 
-// Initialize the plugin with a remote font
+site.remoteFile(
+  "/fonts/Pacifico-Regular.ttf",
+  "https://cdn.jsdelivr.net/gh/google/fonts@refs/heads/main/ofl/pacifico/Pacifico-Regular.ttf",
+);
+
 site.use(typst({
   fonts: [
-    "https://cdn.jsdelivr.net/gh/google/fonts@refs/heads/main/ofl/pacifico/Pacifico-Regular.ttf",
+    "/fonts",
   ],
 }));
 
