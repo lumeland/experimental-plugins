@@ -12,6 +12,13 @@ site.use(typst({
   fonts: [
     "/fonts",
   ],
+  lumeData: (defaults, _data) => {
+    return {
+      ...defaults,
+      customTestProperty: "Hello from _config.ts!",
+      formattedYear: defaults.date ? defaults.date.getFullYear() : 2026,
+    };
+  },
 }));
 
 export default site;

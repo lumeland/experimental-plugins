@@ -47,6 +47,16 @@ export interface SvgOptions {
   mode?: SvgMode;
 }
 
+/** The default shape of the object serialized into `sys.inputs.lume`. */
+export interface LumeData {
+  url?: string;
+  title?: unknown;
+  description?: unknown;
+  date?: Date;
+  tags?: string[];
+  lang?: string;
+}
+
 export interface Options {
   /**
    * File extensions this plugin should handle.
@@ -76,6 +86,16 @@ export interface Options {
   pdf?: PdfOptions;
   /** Options used when exporting to SVG. */
   svg?: SvgOptions;
+  /**
+   * Customize the object serialized into `sys.inputs.lume`. Receives the
+   * engine's default payload (url/title/description/date/tags/lang) and
+   * the full page data — return whatever you want forwarded to your
+   * templates.
+   */
+  lumeData?: (
+    defaults: LumeData,
+    data: Record<string, unknown>,
+  ) => Record<string, unknown>;
 }
 
 // 2. Explicitly type defaults as `Options` instead of using `satisfies Options`
@@ -88,9 +108,12 @@ export const defaults: Options = {
   svg: { mode: "plain" },
 };
 
-type ResolvedOptions = Omit<Required<Options>, "pageSubExtension"> & {
-  pageSubExtension?: string;
-};
+type ResolvedOptions =
+  & Omit<Required<Options>, "pageSubExtension" | "lumeData">
+  & {
+    pageSubExtension?: string;
+    lumeData?: Options["lumeData"];
+  };
 
 export class TypstEngine implements Engine {
   readonly #site: Site;
@@ -214,17 +237,23 @@ export class TypstEngine implements Engine {
     const format = this.#format(url);
     const page = data?.page as Page | undefined;
 
+    const defaultLumeData: LumeData = {
+      url,
+      title: data?.title,
+      description: data?.description,
+      date: data?.date as Date | undefined,
+      tags: data?.tags as string[] | undefined,
+      lang: data?.lang as string | undefined,
+    };
+
     const inputs: Record<string, string> = {
       ...this.#options.inputs,
       "x-target": format,
-      lume: JSON.stringify({
-        url,
-        title: data?.title,
-        description: data?.description,
-        date: data?.date,
-        tags: data?.tags,
-        lang: data?.lang,
-      }),
+      lume: JSON.stringify(
+        this.#options.lumeData
+          ? this.#options.lumeData(defaultLumeData, data ?? {})
+          : defaultLumeData,
+      ),
     };
 
     let src = String(content);
