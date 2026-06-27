@@ -173,7 +173,10 @@ export class TypstEngine implements Engine {
           (url === path || url.startsWith(prefix)) &&
           FONT_EXTS.has(posix.extname(url))
         ) {
-          if (file.content instanceof Uint8Array && !loaded.has(url)) {
+          if (
+            "content" in file && file.content instanceof Uint8Array &&
+            !loaded.has(url)
+          ) {
             blobs.push(Buffer.from(file.content));
             loaded.add(url);
             found = true;
