@@ -296,10 +296,9 @@ export class TypstEngine implements Engine {
       switch (format) {
         case "svg": {
           const mode = this.#options.svg?.mode ?? "plain";
-          const out = mode === "rich"
+          return mode === "rich"
             ? compiler.svg(compileArgs)
             : compiler.plainSvg(compileArgs);
-          return new TextEncoder().encode(out);
         }
         case "pdf": {
           const pdfOpts: RenderPdfOpts | undefined =
