@@ -1,17 +1,26 @@
-import * as vue from "npm:@vue/compiler-sfc@3.5.6";
+import * as vue from "npm:@vue/compiler-sfc@3.5.39";
 import { read } from "lume/core/utils/read.ts";
 import type { Data, RawData } from "lume/core/file.ts";
 
 export default async function load(path: string): Promise<RawData> {
   const code = await read(path, false);
-  const parsed = vue.parse(code, { filename: path });
-  const { template, script, styles } = parsed.descriptor;
+  const parsed = vue.parse(code, {
+    filename: path,
+    templateParseOptions: {
+      parseMode: "sfc",
+    }
+  });
+  const { template, script, styles, filename, slotted, cssVars } = parsed.descriptor;
 
   const result = vue.compileTemplate({
     source: template?.content || "",
-    ssr: true,
-    filename: path,
+    ast: template?.ast,
+    filename,
+    slotted,
+    isProd: true,
     id: path,
+    ssr: true,
+    ssrCssVars: cssVars
   });
 
   const blob = new Blob([result.code], { type: "text/javascript" });

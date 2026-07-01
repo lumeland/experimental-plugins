@@ -1,5 +1,7 @@
 <template>
-  <button class="button">{{ text }}</button>
+  <button @click="foo" class="button">{{ text }}</button>
+  <br>
+  Other
 </template>
 
 <style>
@@ -13,4 +15,7 @@
 </style>
 
 <script>
+function foo() {
+  alert('ola')
+}
 </script>
