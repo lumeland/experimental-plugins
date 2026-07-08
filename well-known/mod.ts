@@ -21,11 +21,13 @@ export interface Options {
 
   /**
    * Indicates whether this site respect the Global Privacy Control signal
+   * @see https://w3c.github.io/gpc/
    */
   gpc?: boolean;
 
   /**
    * Migrate PWA from old domains
+   * @see https://developer.chrome.com/blog/seamless-pwa-origin-migration
    */
   migratePWA?: string | string[];
 }
