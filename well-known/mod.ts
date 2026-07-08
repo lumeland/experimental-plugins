@@ -23,6 +23,11 @@ export interface Options {
    * Indicates whether this site respect the Global Privacy Control signal
    */
   gpc?: boolean;
+
+  /**
+   * Migrate PWA from old domains
+   */
+  migratePWA?: string | string[];
 }
 
 interface Security {
@@ -116,7 +121,15 @@ export function wellKnown(options: Options) {
         content: JSON.stringify({
           gpc: options.gpc,
           lastUpdate: Temporal.Now.plainDateISO(),
-        }),
+        }, null, 2),
+      })
+    }
+
+    if (options.migratePWA) {
+      const entries = toArray(options.migratePWA).map((domain) => [domain, { allow_migration: true }])
+      site.page({
+        url: "/.well-known/web-app-origin-association",
+        content: JSON.stringify(Object.fromEntries(entries), null, 2),
       })
     }
   };

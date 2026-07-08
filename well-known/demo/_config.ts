@@ -16,7 +16,8 @@ site.use(wellKnown({
     contact: "mailto:info@example.com",
     social: "https://mastodon.gal/@misteroom",
     dataTrainingAllowed: false,
-  }
+  },
+  migratePWA: "https://old-domain.com/pwa"
 }));
 
 export default site;
