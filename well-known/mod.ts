@@ -33,25 +33,52 @@ export interface Options {
 }
 
 interface Security {
-  /** Urls, phone number or email address to contact about security issues */
+  /**
+   * Urls, phone number or email address to contact about security issues
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.3
+   */
   contact: string | string[];
 
-  /** The date and time when the content of the security.txt file should be considered stale */
+  /**
+   * The date and time when the content of the security.txt file should be considered stale
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.5
+   */
   expires: Date;
 
-  /** Languages that your security team speaks. You may include more than one language */
-  language?: string | string[];
+  /**
+   * A link to a key which security researchers should use to securely talk to you.
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.4
+   */
+  encryption?: string | string[];
 
-  /** Links to web pages where you say thank you to security researchers who have helped you. */
+  /**
+   * Languages that your security team speaks. You may include more than one language
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.8
+   */
+  preferredLanguages?: string | string[];
+
+  /**
+   * Links to web pages where you say thank you to security researchers who have helped you.
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.1
+   */
   acknowledgments?: string | string[];
 
-  /** Links to policy detailing what security researchers should do when searching for or reporting security issues */
+  /**
+   * Links to policy detailing what security researchers should do when searching for or reporting security issues
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.7
+   */
   policy?: string | string[];
 
-  /** One or more links to any security-related job openings in your organisation */
+  /**
+   * One or more links to any security-related job openings in your organisation
+   * @see https://www.rfc-editor.org/info/rfc9116/#section-2.5.6
+   */
   hiring?: string | string[];
 
-  /** Links to the provider-metadata.json of your CSAF (Common Security Advisory Framework) provider. */
+  /**
+   * Links to the provider-metadata.json of your CSAF (Common Security Advisory Framework) provider.
+   * @see https://docs.oasis-open.org/csaf/csaf/v2.0/os/csaf-v2.0-os.html#718-requirement-8-securitytxt
+   */
   csaf?: string | string[];
 }
 
@@ -141,6 +168,7 @@ function buildSecurity(info: Security, canonical: string): string {
   const names = [
     "Contact",
     "Policy",
+    "Encryption",
     "Acknowledgments",
     "Hiring",
     "CSAF",
@@ -156,8 +184,8 @@ function buildSecurity(info: Security, canonical: string): string {
 
   lines.push(`Expires: ${info.expires.toISOString()}`);
 
-  if (info.language) {
-    lines.push(`Preferred-Languages: ${toArray(info.language).join(", ")}`);
+  if (info.preferredLanguages) {
+    lines.push(`Preferred-Languages: ${toArray(info.preferredLanguages).join(", ")}`);
   }
 
   lines.push(`Canonical: ${canonical}`);

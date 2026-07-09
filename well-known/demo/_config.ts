@@ -8,7 +8,7 @@ site.use(wellKnown({
   security: {
     contact: "mailto:security@example.com",
     expires: new Date(),
-    language: ["en", "gl"],
+    preferredLanguages: ["en", "gl"],
     policy: "https://example.com/security-policy.txt",
   },
   gpc: true,
