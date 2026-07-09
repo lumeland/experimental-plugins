@@ -1,5 +1,14 @@
 import type Site from "lume/core/site.ts";
 
+/**
+ * Other specs:
+ * - https://stated.network/docs/stated_well_known.html
+ * - https://opd.data.ac.uk/
+ * - https://cabforum.org/uploads/CA-Browser-Forum-BR-1.3.8.pdf
+ * - https://github.com/nostr-protocol/nips/blob/master/05.md
+ * - https://spec.matrix.org/latest/client-server-api/#well-known-uris
+ */
+
 export interface Options {
   /**
    * The AT Protocol ID to validate the domain as a handler
