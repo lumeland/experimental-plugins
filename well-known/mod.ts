@@ -20,13 +20,23 @@ export interface Options {
    * To define security policies
    * @see https://securitytxt.org/
    */
-  security?: Security
+  security?: Security;
 
   /**
    * To define the connections betweens website publishers and associations
    * @see https://journallist.net/reference-document-for-trust-txt-specifications
    */
-  trust?: Trust
+  trust?: Trust;
+
+  /**
+   * WebFinger endpoint, following RFC 7033.
+   * Note: since this generates a static file, it only supports a single fixed subject,
+   * not dynamic `?resource=` lookups.
+   * @see https://www.rfc-editor.org/rfc/rfc7033
+   * @see https://datatracker.ietf.org/doc/html/rfc7033
+   * @see https://webfinger.net/
+   */
+  webfinger?: WebFinger;
 
   /**
    * Indicates whether this site respect the Global Privacy Control signal
@@ -117,7 +127,7 @@ interface Trust {
   disclosure?: string | string[];
 
   /**
-   * Contact information that can be in any form, including physical or email addresses, a URI, etc. 
+   * Contact information that can be in any form, including physical or email addresses, a URI, etc.
    * As part of full transparency, Publishers or Associations may want to associate contact data
    * so that people who are part of Data Consumer organizations can make contact with questions.
    */
@@ -130,19 +140,44 @@ interface Trust {
   dataTrainingAllowed?: boolean;
 }
 
+interface WebFinger {
+  /** The URI that identifies the entity, e.g. "acct:user@example.com" */
+  subject: string;
+
+  /** Alternative URIs for the subject */
+  aliases?: string | string[];
+
+  /** Additional properties as URI/value pairs */
+  properties?: Record<string, string | null>;
+
+  /** Relations to other resources, e.g. OIDC issuer, avatar, profile */
+  links: WebFingerLink[];
+}
+
+interface WebFingerLink {
+  rel: string;
+  type?: string;
+  href?: string;
+  titles?: Record<string, string>;
+  properties?: Record<string, string | null>;
+}
+
 export function wellKnown(options: Options) {
   return (site: Site) => {
     if (options.atProto) {
       site.page({
         url: "/.well-known/atproto-did",
         content: options.atProto,
-      })
+      });
     }
 
     if (options.security) {
       site.page({
         url: "/.well-known/security.txt",
-        content: buildSecurity(options.security, site.url("/.well-known/security.txt", true)),
+        content: buildSecurity(
+          options.security,
+          site.url("/.well-known/security.txt", true),
+        ),
       });
     }
 
@@ -153,22 +188,35 @@ export function wellKnown(options: Options) {
       });
     }
 
+    if (options.webfinger) {
+      site.page({
+        url: "/.well-known/webfinger",
+        content: JSON.stringify(buildWebFinger(options.webfinger), null, 2),
+      });
+    }
+
     if (typeof options.gpc === "boolean") {
       site.page({
         url: "/.well-known/gpc.json",
-        content: JSON.stringify({
-          gpc: options.gpc,
-          lastUpdate: Temporal.Now.plainDateISO(),
-        }, null, 2),
-      })
+        content: JSON.stringify(
+          {
+            gpc: options.gpc,
+            lastUpdate: Temporal.Now.plainDateISO(),
+          },
+          null,
+          2,
+        ),
+      });
     }
 
     if (options.migratePWA) {
-      const entries = toArray(options.migratePWA).map((domain) => [domain, { allow_migration: true }])
+      const entries = toArray(options.migratePWA).map((
+        domain,
+      ) => [domain, { allow_migration: true }]);
       site.page({
         url: "/.well-known/web-app-origin-association",
         content: JSON.stringify(Object.fromEntries(entries), null, 2),
-      })
+      });
     }
   };
 }
@@ -186,7 +234,11 @@ function buildSecurity(info: Security, canonical: string): string {
   const lines: string[] = [];
 
   for (const name of names) {
-    for (const value of toArray(info[name.toLowerCase() as keyof Security] as string | string[])) {
+    for (
+      const value of toArray(
+        info[name.toLowerCase() as keyof Security] as string | string[],
+      )
+    ) {
       lines.push(`${name}: ${value}`);
     }
   }
@@ -194,7 +246,9 @@ function buildSecurity(info: Security, canonical: string): string {
   lines.push(`Expires: ${info.expires.toISOString()}`);
 
   if (info.preferredLanguages) {
-    lines.push(`Preferred-Languages: ${toArray(info.preferredLanguages).join(", ")}`);
+    lines.push(
+      `Preferred-Languages: ${toArray(info.preferredLanguages).join(", ")}`,
+    );
   }
 
   lines.push(`Canonical: ${canonical}`);
@@ -218,7 +272,9 @@ function buildTrust(info: Trust): string {
   const lines: string[] = [];
 
   for (const key of keys) {
-    for (const value of toArray(info[key as keyof Trust] as string | string[])) {
+    for (
+      const value of toArray(info[key as keyof Trust] as string | string[])
+    ) {
       lines.push(`${key.toLowerCase()}=${value}`);
     }
   }
@@ -228,10 +284,31 @@ function buildTrust(info: Trust): string {
   }
 
   if (typeof info.dataTrainingAllowed === "boolean") {
-    lines.push(`datatrainingallowed=${info.dataTrainingAllowed ? "yes" : "no"}`);
+    lines.push(
+      `datatrainingallowed=${info.dataTrainingAllowed ? "yes" : "no"}`,
+    );
   }
 
   return lines.join("\n");
+}
+
+function buildWebFinger(info: WebFinger): Record<string, unknown> {
+  const jrd: Record<string, unknown> = {
+    subject: info.subject,
+  };
+
+  const aliases = toArray(info.aliases);
+  if (aliases.length) {
+    jrd.aliases = aliases;
+  }
+
+  if (info.properties) {
+    jrd.properties = info.properties;
+  }
+
+  jrd.links = info.links;
+
+  return jrd;
 }
 
 function toArray(v?: string | string[]): string[] {

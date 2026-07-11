@@ -17,7 +17,16 @@ site.use(wellKnown({
     social: "https://mastodon.gal/@misteroom",
     dataTrainingAllowed: false,
   },
-  migratePWA: "https://old-domain.com/pwa"
+  migratePWA: "https://old-domain.com/pwa",
+  webfinger: {
+    subject: "acct:user@example.com",
+    links: [
+      {
+        rel: "http://openid.net/specs/connect/1.0/issuer",
+        href: "https://codeberg.org",
+      },
+    ],
+  },
 }));
 
 export default site;
