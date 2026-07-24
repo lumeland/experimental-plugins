@@ -8,11 +8,18 @@ export interface Options {
 
   /** Value of the tabindex attribute on headings, set to false to disable. */
   tabIndex?: number | false;
+
+  /**
+   * Function to include the anchor in the header
+   * Set `false` to disable it
+   */
+  anchor?: (header: Element) => void | false;
 }
 
 export const defaults = {
   slugify: createSlugifier(),
   tabIndex: -1,
+  anchor: headerLink(),
 } satisfies Options;
 
 const STARTS_WITH_LETTER = /^[a-z]/i;
@@ -76,6 +83,10 @@ export default function (userOptions?: Options) {
         header.setAttribute("tabindex", `${options.tabIndex}`);
       }
 
+      if (options.anchor) {
+        options.anchor(header);
+      }
+
       const node: Node = {
         level,
         text,
@@ -127,4 +138,71 @@ function renderToc(nodes: Node[]): string {
     code.push("</li>");
   }
   return code.join("\n");
+}
+
+interface HeaderLinkOptions {
+  class?: string;
+}
+
+/**
+ * Generate the anchor with the whole header. Example:
+ *
+ * ```html
+ * <h1 id="foo">This is the title</h1>
+ * is converted to:
+ * <h1 id="foo"><a href="#foo">This is the title</a></h1>
+ * ```
+ */
+export function headerLink(options: HeaderLinkOptions = {}) {
+  return (header: Element) => {
+    const id = header.getAttribute("id");
+    const link = header.ownerDocument.createElement("a");
+    link.setAttribute("href", `#${id}`);
+    if (options.class) {
+      link.setAttribute("class", options.class);
+    }
+    link.innerHTML = header.innerHTML;
+    header.innerHTML = "";
+    header.append(link);
+  };
+}
+
+export interface LinkInsideHeaderOptions {
+  class?: string;
+  append?: boolean;
+  ariaHidden?: boolean;
+  content?: string;
+}
+
+/**
+ * Generate the anchor inside the header. Example:
+ *
+ * ```html
+ * <h1 id="foo">This is the title</h1>
+ * is converted to:
+ * <h1 id="foo"><a href="#foo">#</a>This is the title</h1>
+ * ```
+ */
+export function linkInsideHeader(
+  options: LinkInsideHeaderOptions = {},
+) {
+  return (header: Element) => {
+    const id = header.getAttribute("id");
+    const link = header.ownerDocument.createElement("a");
+
+    link.setAttribute("href", `#${id}`);
+    if (options.class) {
+      link.setAttribute("class", options.class);
+    }
+    if (options.ariaHidden) {
+      link.setAttribute("aria-hidden", "true");
+    }
+    link.innerText = options.content ?? "#";
+
+    if (options.append) {
+      header.append(link);
+    } else {
+      header.prepend(link);
+    }
+  };
 }
