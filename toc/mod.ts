@@ -3,7 +3,10 @@ import type Site from "lume/core/site.ts";
 import createSlugifier from "lume/core/slugifier.ts";
 
 export interface Options {
-  /** Slugify function */
+  /** Minimum level to apply anchors. */
+  minLevel?: number;
+
+  /** Custom slugify function to generate ids */
   slugify?: (x: string) => string;
 
   /** Value of the tabindex attribute on headings, set to false to disable. */
@@ -13,10 +16,11 @@ export interface Options {
    * Function to include the anchor in the header
    * Set `false` to disable it
    */
-  anchor?: (header: Element) => void | false;
+  anchor?: ((header: Element) => void) | false;
 }
 
 export const defaults = {
+  minLevel: 2,
   slugify: createSlugifier(),
   tabIndex: -1,
   anchor: headerLink(),
@@ -64,6 +68,11 @@ export default function (userOptions?: Options) {
 
     for (const header of element.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
       const level = parseInt(header.tagName.slice(1), 10);
+
+      if (level < options.minLevel) {
+        continue;
+      }
+
       const text = header.textContent;
       let id = header.getAttribute("id") || options.slugify(text);
 
@@ -121,7 +130,6 @@ interface Node {
   level: number;
   text: string;
   id: string;
-  // url: string;
   children: Node[];
 }
 
