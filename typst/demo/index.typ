@@ -1,6 +1,6 @@
 ---
-title: "Lume Typst"
-outputs: [html, pdf]
+title: "Lume Typstaa"
+url: /index.pdf
 templateEngine: [vto, typ]
 ---
 #import "_components.typ": alert

@@ -1,6 +1,6 @@
 {
   "imports": {
-    "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.2.6/",
+    "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.3.0/",
     "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.15/jsx-runtime.ts"
   },
   "tasks": {
@@ -21,11 +21,12 @@
       "command": "deno task lume new"
     }
   },
-  "nodeModulesDir": "auto",
   "permissions": {
     "lume": {
       "read": true,
-      "write": ["./"],
+      "write": [
+        "./"
+      ],
       "import": [
         "cdn.jsdelivr.net:443",
         "jsr.io:443",
@@ -48,18 +49,29 @@
     }
   },
   "compilerOptions": {
-    "types": ["lume/types.ts"],
+    "types": [
+      "lume/types.ts"
+    ],
     "jsx": "react-jsx",
     "jsxImportSource": "lume"
   },
-  "unstable": ["fmt-component"],
+  "unstable": [
+    "fmt-component"
+  ],
   "allowScripts": {
-    "deny": ["npm:sharp", "npm:@parcel/watcher"]
+    "deny": [
+      "npm:sharp",
+      "npm:@parcel/watcher"
+    ]
   },
   "lint": {
-    "plugins": ["https://cdn.jsdelivr.net/gh/lumeland/lume@3.2.6/lint.ts"],
+    "plugins": [
+      "https://cdn.jsdelivr.net/gh/lumeland/lume@3.3.0/lint.ts"
+    ],
     "rules": {
-      "exclude": ["no-import-prefix"]
+      "exclude": [
+        "no-import-prefix"
+      ]
     }
   },
   "lock": false

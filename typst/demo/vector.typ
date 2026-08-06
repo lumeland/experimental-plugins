@@ -1,7 +1,6 @@
 ---
 title: Vector Exports
-outputs: ["html", "pdf", "svg"]
-url: /typst/vector.html
+url: /typst/vector.pdf
 ---
 #set page(width: 400pt, height: 200pt, margin: 20pt) if sys.inputs.at("x-target", default: "html") != "html"
 
@@ -15,6 +14,8 @@ This source file automatically generates `/typst/vector.html`, `/typst/vector.pd
 #let target = sys.inputs.at("x-target", default: "html")
 
 Current render target: *#target*
+#let title = json.encode(sys.inputs.at("url"))
+Titulo: #title
 
 #if target == "pdf" [
   *PDF ONLY:* This block proves the compiler recognized the `.pdf` render pass.
