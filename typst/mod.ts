@@ -1,67 +1,53 @@
 import textLoader from "lume/core/loaders/text.ts";
-import loadBinary from "lume/core/loaders/binary.ts";
+import binaryLoader from "lume/core/loaders/binary.ts";
 import { merge } from "lume/core/utils/object.ts";
 import { log } from "lume/core/utils/log.ts";
+import { NodeCompiler } from "./deps.ts";
 
 import type { Entry } from "lume/core/fs.ts";
 import type Site from "lume/core/site.ts";
-import type { Page } from "lume/core/file.ts";
 import type { Engine, Helper } from "lume/core/renderer.ts";
 
 // Import types from deps.ts for TypeScript safety
 import type {
   CompileDocArgs,
   NodeCompiler as NodeCompilerType,
-  RenderPdfOpts,
 } from "./deps.ts";
 
-import { NodeCompiler } from "./deps.ts";
-import { Data } from "lume/types.ts";
+export interface Options {
+  /** Options used when exporting to PDF. */
+  pdf?: {
+    /** The PDF standard to target, e.g. `"1.7"` or `"a-2b"`. */
+    standard?: string;
+    /** Whether to write a tagged (accessible) PDF. @default true */
+    tags?: boolean;
+    /** A fixed creation timestamp, in seconds since the epoch. */
+    creationTimestamp?: number;
+  };
 
-/** The output formats this plugin can compile a `.typ` file to. */
-export type OutputFormat = "html" | "svg" | "pdf";
-
-export interface PdfOptions {
-  /** The PDF standard to target, e.g. `"1.7"` or `"a-2b"`. */
-  standard?: string;
-  /** Whether to write a tagged (accessible) PDF. @default true */
-  tags?: boolean;
-  /** A fixed creation timestamp, in seconds since the epoch. */
-  creationTimestamp?: number;
-}
-
-export type SvgMode = "plain" | "rich";
-
-export interface SvgOptions {
   /**
+   * Options used when exporting to SVG:
+   *
    * "plain" flattens text/images into a fully self-contained SVG — required
    * for static rasterizers (resvg, Sharp/librsvg, ImageMagick). "rich" emits
    * Typst's deduplicated/optimized SVG — smaller for text-heavy docs, but
    * only safe when the consumer is a real browser engine.
-   * @default "plain"
    */
-  mode?: SvgMode;
-}
 
-export interface Options {
-  /**
-   * File extensions this plugin should handle.
-   * @default [".typ"]
-   */
-  extensions?: string[];
-  /** Page sub-extension, e.g. `.page` for `file.page.typ`. */
-  pageSubExtension?: string; // <-- 1. Add '?' to make this optional
-  /** Options used when exporting to PDF. */
-  pdf?: PdfOptions;
-  /** Options used when exporting to SVG. */
-  svg?: SvgOptions;
+  svg?: {
+    /** Extension used for plain SVG */
+    plainExtension: string;
+    /** Extension used for rich SVG */
+    richExtension: string;
+  };
 }
 
 // 2. Explicitly type defaults as `Options` instead of using `satisfies Options`
 export const defaults: Options = {
-  extensions: [".typ"],
-  pdf: {},
-  svg: { mode: "plain" },
+  svg: {
+    plainExtension: ".svg",
+    richExtension: ".rich.svg",
+  },
 };
 
 type ResolvedOptions =
@@ -80,12 +66,15 @@ export class TypstEngine implements Engine {
     this.#options = options;
   }
 
-  initCompiler(fontBlobs: Buffer[]) {
+  initCompiler(fontBlobs: Buffer[], sources: [string, string][]) {
     if (!this.#compiler) {
       this.#compiler = NodeCompiler.create({
-        workspace: this.#site.src(),
+        workspace: "/",
         fontArgs: [{ fontBlobs }],
       });
+    }
+    for (const [path, content] of sources) {
+      this.#compiler.addSource(path, content);
     }
   }
 
@@ -101,22 +90,28 @@ export class TypstEngine implements Engine {
     this.#compiler = undefined;
   }
 
-  #format(url = ""): OutputFormat {
+  #format(url: unknown) {
+    if (typeof url !== "string") {
+      return "html";
+    }
     if (url.endsWith(".pdf")) return "pdf";
-    if (url.endsWith(".svg")) return "svg";
+    const { plainExtension, richExtension } = this.#options.svg;
+    if (url.endsWith(plainExtension) && !url.endsWith(richExtension)) {
+      return "plain_svg";
+    }
+    if (url.endsWith(richExtension) && !url.endsWith(plainExtension)) {
+      return "rich_svg";
+    }
     return "html";
   }
 
-  async render(
-    content: unknown,
-    data: Data,
+  render(
+    content: string,
+    data: Record<string, unknown>,
     filename?: string,
-  ): Promise<string | Uint8Array> {
+  ): string | Uint8Array {
     const compiler = this.#getCompiler();
-    const url = data.url as string;
-    const format = this.#format(url);
-    const page = data?.page as Page | undefined;
-
+    const format = this.#format(data.url);
     const inputs: Record<string, string> = {
       "x-target": format,
       ...Object.fromEntries(
@@ -126,85 +121,70 @@ export class TypstEngine implements Engine {
       ),
     };
 
-    const src = String(content);
+    const args: CompileDocArgs = { inputs };
 
-    if (data && format !== "html" && data.layout) {
-      data.layout = undefined;
+    if (filename) {
+      compiler.addSource(filename, content);
+      args.mainFilePath = filename;
+    } else {
+      args.mainFileContent = content;
     }
-
-    const sourcePath = page?.sourcePath;
-    let mainFilePath: string | undefined;
-
-    if (
-      sourcePath &&
-      this.#options.extensions.some((ext) => sourcePath.endsWith(ext))
-    ) {
-      mainFilePath = this.#site.src(sourcePath);
-      try {
-        compiler.addSource(mainFilePath, src);
-      } catch (error) {
-        log.warn(
-          `[typst plugin] Unable to register source ${sourcePath}: ${error}`,
-        );
-      }
-    }
-
-    const compileArgs: CompileDocArgs = {
-      inputs,
-      ...(mainFilePath ? { mainFilePath } : { mainFileContent: src }),
-    };
 
     try {
-      console.log(compileArgs);
       switch (format) {
-        case "svg": {
-          const mode = this.#options.svg?.mode ?? "plain";
-          return mode === "rich"
-            ? compiler.svg(compileArgs)
-            : compiler.plainSvg(compileArgs);
-        }
-        case "pdf": {
-          try {
-            const pdfOpts: RenderPdfOpts | undefined =
-              this.#options.pdf && Object.keys(this.#options.pdf).length > 0
-                ? {
-                  pdfStandard: this.#options.pdf.standard,
-                  pdfTags: this.#options.pdf.tags,
-                  creationTimestamp: this.#options.pdf.creationTimestamp,
-                }
-                : undefined;
-            return compiler.pdf(compileArgs, pdfOpts);
-          } catch (err) {
-            console.error(err);
-            break;
-          }
-        }
-        default: {
-          const result = compiler.tryHtml(compileArgs);
-          if (result.hasError()) {
-            result.printErrors();
-            throw new Error(
-              `[typst plugin] HTML compilation failed for ${
-                url ?? filename ?? "unknown"
-              }`,
-            );
-          }
-          const output = result.result!;
-          if (data) {
-            data.title ??= output.title();
-            data.description ??= output.description();
-          }
-          return output.body();
-        }
+        case "rich_svg":
+          return this.#renderRichSvg(args);
+        case "plain_svg":
+          return this.#renderPlainSvg(args);
+        case "pdf":
+          return this.#renderPdf(args);
+        default:
+          return this.#renderHtml(args);
       }
     } catch (error) {
       log.error(
         `[typst plugin] Failed to compile ${
-          url ?? filename ?? "unknown"
-        } (${format}): ${error}`,
+          filename ?? "unknown"
+        } (${format}): ${error} ${(error as { code: string }).code}`,
       );
       throw error;
     }
+  }
+
+  #renderRichSvg(args: CompileDocArgs) {
+    const compiler = this.#getCompiler();
+    return compiler.svg(args);
+  }
+
+  #renderPlainSvg(args: CompileDocArgs) {
+    const compiler = this.#getCompiler();
+    return compiler.plainSvg(args);
+  }
+
+  #renderPdf(args: CompileDocArgs) {
+    const compiler = this.#getCompiler();
+    const { standard: pdfStandard, tags: pdfTags, creationTimestamp } =
+      this.#options.pdf ?? {};
+    return compiler.pdf(args, {
+      pdfStandard,
+      pdfTags,
+      creationTimestamp,
+    });
+  }
+
+  #renderHtml(args: CompileDocArgs) {
+    const compiler = this.#getCompiler();
+    const result = compiler.tryHtml(args);
+
+    if (result.hasError()) {
+      result.printErrors();
+      throw new Error(
+        `[typst plugin] HTML compilation failed for ${
+          args.mainFilePath ?? "unknown"
+        }`,
+      );
+    }
+    return result.result?.body() ?? "";
   }
 
   addHelper() {}
@@ -220,17 +200,16 @@ export function typst(userOptions?: Options) {
     const engine = new TypstEngine(site, options);
     let blobs: Buffer[] | undefined;
 
-    site.loadPages(options.extensions, {
+    site.loadPages([".typ"], {
       loader: textLoader,
       engine,
-      pageSubExtension: options.pageSubExtension,
     });
 
     site.addEventListener("beforeRender", async (event) => {
       // Load all fonts added to Lume
       if (!blobs) {
         const fontsExtensions = new Set([".woff2", ".woff", ".ttf", ".otf"]);
-        const entries: Entry[] = [
+        const fonts: Entry[] = [
           ...event.pages
             .filter((page) => fontsExtensions.has(page.src.ext))
             .map((page) => page.src.entry)
@@ -241,18 +220,30 @@ export function typst(userOptions?: Options) {
             .filter((entry) => entry !== undefined),
         ];
 
-        blobs = await Promise.all(entries.map(async (entry) => {
-          const { content } = await entry.getContent(loadBinary);
+        blobs = await Promise.all(fonts.map(async (entry) => {
+          const { content } = await entry.getContent(binaryLoader);
           return Buffer.from(content as Uint8Array);
         }));
       }
 
-      engine.initCompiler(blobs);
+      const src: Entry[] = Array.from(site.fs.entries.values())
+        .filter((entry) => entry.path.endsWith(".typ"));
+      const sources: [string, string][] = await Promise.all(
+        src.map(async (entry) => {
+          const { content } = await entry.getContent(textLoader);
+          return [
+            entry.path,
+            content as string,
+          ];
+        }),
+      );
+
+      engine.initCompiler(blobs, sources);
     });
 
     site.filter(
       "typst",
-      ((content: string, data?: Record<string, unknown>) =>
+      ((content: string, data: Record<string, string> = {}) =>
         engine.render(content, data)) as Helper,
       true,
     );
