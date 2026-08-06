@@ -25,44 +25,32 @@ export interface Options {
     creationTimestamp?: number;
   };
 
-  /**
-   * Options used when exporting to SVG:
-   *
-   * "plain" flattens text/images into a fully self-contained SVG — required
-   * for static rasterizers (resvg, Sharp/librsvg, ImageMagick). "rich" emits
-   * Typst's deduplicated/optimized SVG — smaller for text-heavy docs, but
-   * only safe when the consumer is a real browser engine.
-   */
-
+  /** Options used when exporting to SVG. */
   svg?: {
-    /** Extension used for plain SVG */
-    plainExtension: string;
-    /** Extension used for rich SVG */
-    richExtension: string;
+    /**
+     * Options used when exporting to SVG:
+     *
+     * "plain" flattens text/images into a fully self-contained SVG — required
+     * for static rasterizers (resvg, Sharp/librsvg, ImageMagick). "rich" emits
+     * Typst's deduplicated/optimized SVG — smaller for text-heavy docs, but
+     * only safe when the consumer is a real browser engine.
+     */
+    mode?: "plain" | "rich" | ((path: string) => "plain" | "rich");
   };
 }
 
 // 2. Explicitly type defaults as `Options` instead of using `satisfies Options`
-export const defaults: Options = {
+export const defaults = {
   svg: {
-    plainExtension: ".svg",
-    richExtension: ".rich.svg",
+    mode: (path: string) => path.endsWith(".rich.svg") ? "rich" : "plain",
   },
-};
-
-type ResolvedOptions =
-  & Omit<Required<Options>, "pageSubExtension">
-  & {
-    pageSubExtension?: string;
-  };
+} satisfies Options;
 
 export class TypstEngine implements Engine {
-  readonly #site: Site;
-  readonly #options: ResolvedOptions;
+  readonly #options: Options;
   #compiler?: NodeCompilerType;
 
-  constructor(site: Site, options: ResolvedOptions) {
-    this.#site = site;
+  constructor(options: Options) {
     this.#options = options;
   }
 
@@ -95,13 +83,7 @@ export class TypstEngine implements Engine {
       return "html";
     }
     if (url.endsWith(".pdf")) return "pdf";
-    const { plainExtension, richExtension } = this.#options.svg;
-    if (url.endsWith(plainExtension) && !url.endsWith(richExtension)) {
-      return "plain_svg";
-    }
-    if (url.endsWith(richExtension) && !url.endsWith(plainExtension)) {
-      return "rich_svg";
-    }
+    if (url.endsWith(".svg")) return "svg";
     return "html";
   }
 
@@ -132,10 +114,8 @@ export class TypstEngine implements Engine {
 
     try {
       switch (format) {
-        case "rich_svg":
-          return this.#renderRichSvg(args);
-        case "plain_svg":
-          return this.#renderPlainSvg(args);
+        case "svg":
+          return this.#renderSvg(args, data.url as string);
         case "pdf":
           return this.#renderPdf(args);
         default:
@@ -151,14 +131,13 @@ export class TypstEngine implements Engine {
     }
   }
 
-  #renderRichSvg(args: CompileDocArgs) {
+  #renderSvg(args: CompileDocArgs, url: string) {
     const compiler = this.#getCompiler();
-    return compiler.svg(args);
-  }
+    const mode = typeof this.#options.svg?.mode === "function"
+      ? this.#options.svg.mode(url)
+      : this.#options.svg?.mode ?? "plain";
 
-  #renderPlainSvg(args: CompileDocArgs) {
-    const compiler = this.#getCompiler();
-    return compiler.plainSvg(args);
+    return mode === "rich" ? compiler.svg(args) : compiler.plainSvg(args);
   }
 
   #renderPdf(args: CompileDocArgs) {
@@ -194,10 +173,10 @@ export function typst(userOptions?: Options) {
   const options = merge(
     defaults,
     userOptions,
-  ) as ResolvedOptions;
+  );
 
   return (site: Site) => {
-    const engine = new TypstEngine(site, options);
+    const engine = new TypstEngine(options);
     let blobs: Buffer[] | undefined;
 
     site.loadPages([".typ"], {

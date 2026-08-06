@@ -2,6 +2,7 @@
 title: "Lume Typstaa"
 url: /index.pdf
 templateEngine: [vto, typ]
+output: [html, svg]
 ---
 #import "_components.typ": alert
 
